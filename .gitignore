@@ -1,0 +1,19 @@
+# Raw and intermediate data are large and are re-created by run_all.py
+data/raw/sec_13f/
+data/raw/prices_daily.parquet
+data/interim/
+*.part
+
+# Keep these small raw-input records in the repo for provenance
+!data/raw/provenance.csv
+!data/raw/cusip_ticker_map.csv
+
+# Python / OS / editor
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.venv/
+venv/
+.env
+.streamlit/secrets.toml
