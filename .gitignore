@@ -1,0 +1,25 @@
+# Raw data files — large and re-downloadable, do not commit
+inputs/13f_index/
+inputs/13f_holdings/
+inputs/returns/
+inputs/crowding.parquet
+inputs/cusip_ticker_map.parquet
+inputs/final_dataset.parquet
+
+# Keep outputs so collaborators can see results without re-running
+# (delete these lines if you want outputs in .gitignore too)
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+env/
+.env
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
