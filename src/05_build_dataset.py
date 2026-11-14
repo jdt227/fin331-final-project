@@ -110,6 +110,11 @@ for q in config.SIGNAL_QUARTERS:
     u["n_continuing_filers"] = len(cont)
     u["breadth"] = u["cusip"].map(b_now).fillna(0) / len(cont) * 100
     u["breadth_lag"] = u["cusip"].map(b_lag).fillna(0) / len(cont) * 100
+    # A CUSIP with no 13F holders last quarter (IPO, spinoff, new CUSIP after a corporate
+    # action) would get dbreadth = its whole breadth and land in the most-crowded bin
+    # mechanically. Its change in crowding is undefined, so the change measures are NaN.
+    u["new_cusip"] = u["n_holders_lag"].isna()
+    u.loc[u["new_cusip"], ["breadth_lag", "pct_chg_holders"]] = np.nan
     u["dbreadth"] = u["breadth"] - u["breadth_lag"]
 
     # --- buyers vs sellers among continuing managers (split-adjusted)
@@ -123,6 +128,7 @@ for q in config.SIGNAL_QUARTERS:
     bs = m.groupby("cusip")[["buy", "sell"]].sum()
     u = u.join(bs, on="cusip", validate="1:1")
     u["net_buyer_frac"] = (u["buy"] - u["sell"]) / (u["buy"] + u["sell"])
+    u.loc[u["new_cusip"], "net_buyer_frac"] = np.nan
     u["split_factor"] = u["cusip"].map(fac)
 
     # --- dates and returns
@@ -153,7 +159,7 @@ d["crowd_score"] = ((pr("n_holders") + pr("dbreadth")) / 2 * 100).round(1)
 
 cols = ["quarter", "ticker", "cusip", "issuer", "size_rank", "inst_dollar",
         "log_inst_dollar", "n_filers_total", "n_continuing_filers", "n_holders",
-        "n_holders_lag", "pct_chg_holders", "breadth", "breadth_lag", "dbreadth", "buy",
+        "n_holders_lag", "new_cusip", "pct_chg_holders", "breadth", "breadth_lag", "dbreadth", "buy",
         "sell", "net_buyer_frac", "split_factor", "crowd_score", "quarter_end",
         "filing_deadline", "formation_date", "holding_end_date", "ret_fwd", "mkt_fwd",
         "exret_fwd", "ret_naive", "mkt_naive", "exret_naive", "ret_past", "vol_63d"]
@@ -161,12 +167,17 @@ d = d[cols].sort_values(["quarter", "size_rank"]).reset_index(drop=True)
 assert not d.duplicated(["ticker", "quarter"]).any(), "ticker-quarter must be unique"
 assert not d.duplicated(["cusip", "quarter"]).any(), "cusip-quarter must be unique"
 assert (d["formation_date"] > d["filing_deadline"]).all(), "formation must follow deadline"
+# ...and come right after it. A larger gap means the price calendar is missing days
+# (e.g. a price cache that starts too late), which would silently shift every return.
+gap = (d["formation_date"] - d["filing_deadline"]).dt.days
+assert (gap <= 7).all(), f"formation date {gap.max()} days after deadline: check prices"
 d.to_parquet(config.OUTPUTS / "final_dataset.parquet", index=False)
 d.to_csv(config.OUTPUTS / "final_dataset.csv", index=False)
 
 cov = d.groupby("quarter").agg(stocks=("ticker", "size"),
                                with_fwd_return=("ret_fwd", "count"),
-                               with_dbreadth=("dbreadth", "count"))
+                               with_dbreadth=("dbreadth", "count"),
+                               new_cusip_no_lag=("new_cusip", "sum"))
 cov["share_missing_return"] = 1 - cov["with_fwd_return"] / cov["stocks"]
 cov.to_csv(config.TABLES / "return_coverage.csv")
 print(cov.to_string())

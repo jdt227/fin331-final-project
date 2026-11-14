@@ -89,6 +89,7 @@ acc = filings.set_index("accession")[["cik", "quarter", "filing_date"]]
 info_cols = ["ACCESSION_NUMBER", "NAMEOFISSUER", "TITLEOFCLASS", "CUSIP", "VALUE",
              "SSHPRNAMT", "SSHPRNAMTTYPE", "PUTCALL"]
 
+written = []
 for path in files:
     pieces = []
     with zipfile.ZipFile(path) as zf:
@@ -117,10 +118,12 @@ for path in files:
            .agg(shares=("shares", "sum"), value=("value", "sum"),
                 issuer=("NAMEOFISSUER", "first"), title=("TITLEOFCLASS", "first")))
     h.to_parquet(parts_dir / (path.stem + ".parquet"), index=False)
+    written.append(parts_dir / (path.stem + ".parquet"))
     print(f"  {path.name}: {len(h):,} manager-stock rows")
 
 # A given filing lives in exactly one zip, so concatenating parts by quarter is safe.
-parts = sorted(parts_dir.glob("*.parquet"))
+# Read only the parts written by THIS run (old parts from another sample are ignored).
+parts = written
 for q in config.HOLDINGS_QUARTERS:
     qh = pd.concat([pd.read_parquet(p, filters=[("quarter", "==", str(q))]) for p in parts],
                    ignore_index=True)

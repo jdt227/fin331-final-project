@@ -236,6 +236,9 @@
       <div class="card">
         <h3>CUSIP → ticker mapping</h3>
         <div class="tablewrap" id="tMapping"></div>
+        <h3 style="margin-top:16px">Large candidates left out of the universe, and why</h3>
+        <div class="note">Funds, ADRs and second share classes are excluded by rule. Stocks that were acquired or changed CUSIP since are kept through a hand-reviewed map, so the universe is not limited to today's survivors.</div>
+        <div class="tablewrap" id="tExcl"></div>
         <h3 style="margin-top:16px">Forward-return coverage</h3>
         <div class="tablewrap" id="tCoverage"></div>
       </div>
@@ -514,14 +517,18 @@
   const tiles = [
     { label: "Sample", value: sampleLabel, foot: `${quarters.length} quarters · top ${S.universe_size} stocks` },
     { label: "Stock-quarters", value: int(H.n_stock_quarters), foot: `${int(H.n_with_forward_return)} with a forward return` },
-    { label: "Most − least crowded, next quarter", value: spct(H.primary_q5_minus_q1_per_quarter, 2), foot: `t = ${num(H.primary_t_stat)} · return minus SPY, per quarter` },
+    { label: "Most − least crowded, next quarter", value: spct(H.primary_q5_minus_q1_per_quarter, 2), foot: `t = ${num(H.primary_t_stat)}, p = ${num(H.primary_p_value, 2)} (${H.primary_df} df) · return minus SPY, per quarter` },
     { label: "After trading costs", value: spct(H.primary_net_of_costs_per_quarter, 2), foot: `${S.magnitude[0] ? pct(mag.avg_leg_turnover_per_quarter, 0) : "—"} turnover · ${mag.cost_bps_per_side ?? "—"} bp per side` },
   ];
   $("tiles").innerHTML = tiles.map((t) => `<div class="card tile"><div class="label">${esc(t.label)}</div><div class="value">${esc(t.value)}</div><div class="foot">${esc(t.foot)}</div></div>`).join("");
 
   const ls = H.primary_q5_minus_q1_per_quarter;
+  const sig5 = H.primary_p_value < 0.05;
+  const story = ls >= 0 ? "the information story (crowded stocks do better)" : "the herding story (crowded stocks do worse)";
   $("ovTakeaway").innerHTML = `<b>What the data say so far:</b> the most crowded quintile ${ls >= 0 ? "<b>outperformed</b>" : "<b>underperformed</b>"} the least crowded by
-    ${pct(Math.abs(ls), 1)} per quarter (t = ${num(H.primary_t_stat)}), which ${ls >= 0 ? "supports the information story over the herding story" : "supports the herding story"}.`;
+    ${pct(Math.abs(ls), 1)} per quarter, positive in ${pct(H.primary_share_quarters_positive, 0)} of quarters (t = ${num(H.primary_t_stat)}, p = ${num(H.primary_p_value, 2)} with ${H.primary_df} degrees of freedom).
+    ${sig5 ? `That is statistically significant at the 5% level and points toward ${story}.`
+           : `That is <b>not</b> statistically significant at the 5% level: it leans toward ${story}, but chance can't be ruled out.`}`;
   $("ovCaveat").innerHTML = S.quick_mode
     ? `<b>Preliminary.</b> This is the v0 run: ${quarters.length} quarters (${esc(H.sample_quarters)}), the ${S.universe_size} largest stocks. A t-statistic from ${quarters.length} quarters is fragile, and 2023 was dominated by the AI rally. The full 2022–2024 sample is the real test.`
     : `<b>Read with care.</b> ${quarters.length} quarters is still a short sample. See the Methodology tab for the known limits (survivorship in Yahoo returns, ticker mapping, 13F coverage).`;
@@ -538,6 +545,11 @@
       { key: "kept", label: "Kept", num: true, fmt: int },
     ], fc) + `<div class="note" style="margin-top:6px">${int(tot.duplicate_originals_dropped)} duplicate originals dropped; ${int(tot.kept)} manager-quarter filings kept in total.</div>`;
     $("tMapping").innerHTML = tableHTML([{ key: "check", label: "Check" }, { key: "value", label: "Value", num: true, fmt: int }], S.mapping);
+    $("tExcl").innerHTML = tableHTML([
+      { key: "issuer", label: "13F issuer name" }, { key: "figi_ticker", label: "Ticker" },
+      { key: "reason", label: "Reason" },
+      { key: "quarters_in_top_n", label: "Quarters it was big enough", num: true, fmt: int },
+    ], (S.exclusions || []).filter((r) => r.quarters_in_top_n > 0));
     $("tCoverage").innerHTML = tableHTML([
       { key: "quarter", label: "Quarter" }, { key: "stocks", label: "Stocks", num: true, fmt: int },
       { key: "with_fwd_return", label: "With return", num: true, fmt: int },
@@ -568,6 +580,7 @@
       { key: "signal", label: "Measure", fmt: (v) => esc(sigName(v)) },
       { key: "mean_q5_minus_q1", label: "Q5 − Q1 per quarter", num: true, fmt: (v) => spct(v, 2), cls: cls },
       { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
+      { key: "p_value", label: "p-value", num: true, fmt: (v) => num(v, 3) },
       { key: "share_quarters_positive", label: "Quarters positive", num: true, fmt: (v) => pct(v, 0) },
       { key: "n_quarters", label: "Quarters", num: true, fmt: int },
     ], S.long_short_summary);
@@ -576,13 +589,15 @@
       { key: "variable", label: "Variable", fmt: (v) => esc(varName(v)) },
       { key: "coef", label: "Coef (per SD)", num: true, fmt: (v) => spct(v, 2) },
       { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
-    ], fm);
+      { key: "p_value", label: "p-value", num: true, fmt: (v) => num(v, 3) },
+    ], fm) + (fm[0] ? `<div class="note" style="margin-top:6px">${int(fm[0].n_quarters)} quarterly regressions, so p-values use ${int(fm[0].n_quarters - 1)} degrees of freedom</div>` : "");
     const ols = S.pooled_ols.filter((r) => r.signal === sig);
     $("tOLS").innerHTML = tableHTML([
       { key: "variable", label: "Variable", fmt: (v) => esc(varName(v)) },
       { key: "coef", label: "Coef (per SD)", num: true, fmt: (v) => spct(v, 2) },
       { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
-    ], ols) + (ols[0] ? `<div class="note" style="margin-top:6px">${int(ols[0].n_obs)} observations · R² = ${num(ols[0].r2, 3)}</div>` : "");
+      { key: "p_value", label: "p-value", num: true, fmt: (v) => num(v, 3) },
+    ], ols) + (ols[0] ? `<div class="note" style="margin-top:6px">${int(ols[0].n_obs)} observations · ${int(ols[0].n_clusters)} stocks (clusters) · R² = ${num(ols[0].r2, 3)}</div>` : "");
   }
   function renderResultsStatic() {
     const lf = look.exret_fwd || {}, ln = look.exret_naive || {};

@@ -1,5 +1,5 @@
-quarter,stocks,with_fwd_return,with_dbreadth,share_missing_return
-2023Q1,100,100,100,0.0
-2023Q2,100,100,100,0.0
-2023Q3,100,100,100,0.0
-2023Q4,100,100,100,0.0
+quarter,stocks,with_fwd_return,with_dbreadth,new_cusip_no_lag,share_missing_return
+2023Q1,100,100,99,1,0.0
+2023Q2,100,100,100,0,0.0
+2023Q3,100,100,100,0,0.0
+2023Q4,100,100,100,0,0.0

@@ -2,4 +2,4 @@ step,check,pipeline,by_hand,match
 1-3 parse/stats,n_holders AAPL 2023Q3,4240.0,4240.0,True
 4-5 returns,ret_fwd AAPL 2023Q3,-0.02082536739634444,-0.02082536739634444,True
 5 timing,formation_date 2023Q3 (days since 1970),19676.0,19676.0,True
-6 analysis,Q5-Q1 dbreadth 2023Q3,0.0973789079645054,0.0973789079645054,True
+6 analysis,Q5-Q1 dbreadth 2023Q3,0.0927899283295667,0.09278992832956676,True

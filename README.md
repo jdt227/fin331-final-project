@@ -1,5 +1,7 @@
 # Crowded Trades: What Happens When the Institutions Pile In?
 
+**Team Token Ticklers:** Harrison Babuschak, Brauston Estes, Jacob Thompson, Juliana Vasquez
+
 **Question.** Do stocks that many institutional managers bought last quarter do worse over the next quarter? In other words, is "crowding" a risk?
 
 **Who would pay for the answer.** A risk manager at a hedge fund or asset manager who needs to know whether positions shared with many other funds carry hidden downside.
@@ -12,7 +14,7 @@
 | **Checkpoint 1 memo** | [`STATUS.md`](STATUS.md) |
 | **Specifications log** | [`specs_tried.md`](specs_tried.md) and `outputs/tables/specs_run.csv` |
 | **Audits** | [`audits/`](audits/) |
-| **Presentation** | `presentation/` |
+| **Presentation** | `presentation/` (added before the Dec 1 presentation) |
 
 ---
 
@@ -33,16 +35,20 @@ CROWD_QUICK=1 python run_all.py      # v0 small sample: 2023 only, 100 largest s
 # 4. Dashboard: double-click index.html, or open the GitHub Pages link above
 ```
 
-On Windows PowerShell, set variables first instead: `$env:CROWD_QUICK="1"; python run_all.py`.
+On Windows PowerShell, set variables first instead: `$env:CROWD_QUICK="1"; python run_all.py`. To go back to the full sample in the same window: `Remove-Item Env:CROWD_QUICK`.
+
+**Which command made the committed `outputs/`?** Check the badge at the top of the dashboard ("v0 sample" or "top 500 stocks") or `quick_mode` in `outputs/site_data.js`. The README, proposal and audit say which run their numbers come from.
 
 `run_all.py` runs the eight scripts in `src/` in order and stops on the first error. Downloads are cached in `data/raw/`, so a second run skips them. Use `python run_all.py --from 5` to re-run only the later steps.
 
 **Storage.** The SEC zip files are roughly 50–150 MB each, about 1–2 GB for the full sample. They are git-ignored, and `src/01_download_13f.py` re-creates them. Everything in `outputs/` is small and committed.
 
-**Testing without internet.** `python tests/make_fake_raw.py /tmp/crowd_test` writes a small fake data set in the exact SEC, OpenFIGI and price formats, with built-in traps: late filers, amendments, duplicate filings, option rows, the 2023 change in value units, an ETF, a stock split and a delisted ticker. The pipeline runs on it end to end:
+**Cached answers are committed on purpose.** OpenFIGI describes securities as they are *today*, and Yahoo re-adjusts past prices whenever a dividend or split happens, so re-querying them later can change the numbers. `data/raw/openfigi_cache.json`, `data/raw/prices_daily.parquet` and `data/raw/prices_requests.csv` are therefore in the repo, and a fresh clone reproduces the exact numbers. Step 4 re-downloads a ticker only if its cached date window doesn't cover the sample (for example, when moving from the v0 sample to the full sample). Delete the cache files to force a fresh pull.
+
+**Testing without internet.** `python tests/make_fake_raw.py crowd_test` writes a small fake data set in the exact SEC, OpenFIGI and price formats, with built-in traps: late filers, amendments, duplicate filings, option rows, the 2023 change in value units, an ETF, a stock split, a delisted ticker, a second share class of one issuer, a newly listed stock, a REIT, and a stock with only a foreign listing. The pipeline runs on it end to end:
 
 ```bash
-CROWD_DATA_DIR=/tmp/crowd_test/data CROWD_OUTPUT_DIR=/tmp/crowd_test/outputs \
+CROWD_DATA_DIR=crowd_test/data CROWD_OUTPUT_DIR=crowd_test/outputs \
 CROWD_UNIVERSE_SIZE=40 CROWD_CANDIDATE_POOL=60 python run_all.py
 ```
 
@@ -51,7 +57,7 @@ CROWD_UNIVERSE_SIZE=40 CROWD_CANDIDATE_POOL=60 python run_all.py
 The dashboard is a static page, so GitHub Pages hosts it for free:
 
 1. Merge your branch into `main` and push.
-2. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → `main` / `(root)` → Save.** Only the repo owner or an admin can change this.
+2. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → `main` / `(root)` → Save.** Only the repo owner or an admin can change this. (Before a PR is merged, Pages can point at the PR's branch instead, so the site is live for review; switch it back to `main` after merging.)
 3. After a minute or two, the site is live at the link above. Every push to `main` that changes `index.html` or `outputs/` updates it.
 
 To preview locally, double-click `index.html`. It works without a web server.
@@ -66,7 +72,7 @@ src/
   common.py                      small shared helpers
   01_download_13f.py             SEC Form 13F zips  -> data/raw/sec_13f/
   02_parse_13f.py                on-time original filings -> manager x stock x quarter
-  03_universe_and_cusip_map.py   holder counts, CUSIP->ticker (OpenFIGI), top-500 universe
+  03_universe_and_cusip_map.py   holder counts, CUSIP->ticker (OpenFIGI + manual map), top-500 universe
   04_download_prices.py          adjusted prices + splits (Yahoo Finance)
   05_build_dataset.py            crowding measures + forward returns -> outputs/final_dataset.csv
   06_analysis.py                 sorts, Fama-MacBeth, pooled OLS, costs, figures
@@ -74,6 +80,7 @@ src/
   08_export_site_data.py         packages outputs/ into outputs/site_data.js for index.html
 tests/make_fake_raw.py           offline test data in the real formats
 data/raw/                        raw inputs (+ provenance.csv: source and pull time of each)
+data/manual_ticker_map.csv       hand-reviewed CUSIP -> ticker entries (acquired firms, changed CUSIPs)
 data/interim/                    parsed intermediate files (git-ignored)
 outputs/                         final dataset, tables/, figures/ (every number shown comes from here)
 images/                          dashboard screenshot
@@ -86,7 +93,8 @@ audits/                          self-audits and responses to instructor audits
 |---|---|---|---|
 | Form 13F holdings | [SEC Form 13F data sets](https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets) (free, quarterly, tab-delimited) | `src/01_download_13f.py` | `data/raw/sec_13f/*.zip` |
 | CUSIP → ticker, security type | [OpenFIGI mapping API](https://www.openfigi.com/api) | `src/03_universe_and_cusip_map.py` (cached) | `data/raw/openfigi_cache.json`, `data/raw/cusip_ticker_map.csv` |
-| Daily adjusted prices, splits | Yahoo Finance via `yfinance` | `src/04_download_prices.py` | `data/raw/prices_daily.parquet` |
+| CUSIP → ticker for stocks OpenFIGI can no longer map | Hand review: 13F issuer name plus the exchange ticker at the time (one row per stock, with the reason and source) | Edited by hand, read by step 3 | `data/manual_ticker_map.csv` |
+| Daily adjusted prices, splits | Yahoo Finance via `yfinance` | `src/04_download_prices.py` | `data/raw/prices_daily.parquet`, `data/raw/prices_requests.csv` (window pulled per ticker) |
 
 `data/raw/provenance.csv` records the URL, pull time (UTC), file size and SHA-256 hash of every raw input.
 
@@ -98,19 +106,22 @@ One row of `outputs/final_dataset.csv` is **one stock × one 13F report quarter*
 
 What we already know could be wrong, and what we do about it:
 
-1. **Look-ahead from quarter-end dates.** 13F holdings are not public until up to 45 days after quarter end. We start every return on the first trading day *after* the deadline, and we drop filings made after the deadline. As a check, `outputs/tables/lookahead_comparison.csv` shows how much the answer changes under the wrong (quarter-end) timing.
+1. **Look-ahead from quarter-end dates.** 13F holdings are not public until up to 45 days after quarter end. We start every return on the first trading day *after* the deadline, and we drop filings made after the deadline. When day 45 is a weekend or federal holiday, the legal deadline is the next business day, and so is ours (this matters for 2022Q1 and 2022Q2). An `assert` checks that every formation date is 1–7 days after its deadline. As a check, `outputs/tables/lookahead_comparison.csv` shows how much the answer changes under the wrong (quarter-end) timing.
 2. **Amendments.** 13F-HR/A filings arrive later and can restate holdings. We use original filings only, so the data match what was public at the signal date. This undercounts holdings for managers whose originals were incomplete.
-3. **Survivorship in returns (biggest known limitation).** Yahoo Finance drops most delisted tickers. A stock that was in our universe and later got acquired or delisted may have no price data. `outputs/tables/return_coverage.csv` reports how many stock-quarters lose their return. The direction of the bias is unclear: acquisitions usually end with a price jump, while failures end with a crash. CRSP would fix this, and is a stretch goal.
-4. **CUSIP → ticker mapping.** OpenFIGI returns a security's *current* ticker. If a ticker has been reused by another company, the mapping can be wrong. We flag every universe stock whose 13F issuer name and OpenFIGI name disagree (`outputs/tables/cusip_name_mismatches.csv`) and review that list by hand.
-5. **Universe selection.** The universe is the 500 largest common stocks by 13F-reported dollar holdings at each quarter. It uses only information available then, not today's S&P 500 list. It is a proxy for market cap, not market cap itself.
-6. **Reporting errors in 13F values.** Some filers report dollars when they should report thousands, or the reverse. Holder counts don't use values. The size ranking uses each stock's *median* implied price across filers, so a few bad filers can't move it.
-7. **Stock splits.** Share counts are not split-adjusted in 13F filings. The buyer and seller measure adjusts last quarter's shares by the Yahoo split factor between the two quarter ends.
-8. **Short sample.** The sample has 12 quarters, so time-series t-statistics are noisy. We report magnitudes, hit rates and costs, not just stars, and list every specification we ran.
-9. **13F coverage.** 13F filings cover long US equity positions of managers above $100M only. Short positions, derivatives and smaller funds are invisible to us.
+3. **Survivorship in the universe.** OpenFIGI describes securities as they are *today*, so a firm acquired after our sample (Activision, Pioneer, VMware), a CUSIP that changed later (Lam Research, BlackRock), or a foreign-incorporated firm with a CINS code (Linde, Accenture) may have no current U.S. listing. Dropping them would bias the universe toward survivors. We retry CINS codes with OpenFIGI's `ID_CINS` lookup and keep the rest through the hand-reviewed `data/manual_ticker_map.csv`. Every large candidate still excluded, with its reason, is in `outputs/tables/universe_exclusions.csv` and on the dashboard's Methodology tab, and step 3 prints a warning if one needs review.
+4. **Survivorship in returns (biggest remaining limitation).** Yahoo Finance drops most delisted tickers, so a stock kept in the universe that was later acquired may have no prices. `outputs/tables/return_coverage.csv` reports how many stock-quarters lose their return. The direction of the bias is unclear: acquisitions usually end with a price jump, while failures end with a crash. CRSP would fix this, and is a stretch goal.
+5. **CUSIP → ticker mapping.** OpenFIGI returns a security's *current* ticker. If a ticker has been reused by another company, the mapping can be wrong. We flag every universe stock whose 13F issuer name and OpenFIGI name disagree (`outputs/tables/cusip_name_mismatches.csv`) and review that list by hand.
+6. **Universe selection.** The universe is the 500 largest U.S. common stocks (including REITs and foreign-incorporated firms whose ordinary shares trade in the U.S.; excluding funds and ADRs) by 13F-reported dollar holdings at each quarter, with one share class per issuer (GOOG and GOOGL would otherwise count Alphabet twice). It uses only information available then, not today's S&P 500 list. It is a proxy for market cap, not market cap itself.
+7. **New CUSIPs.** A stock with no 13F holders last quarter (IPO, spinoff, new CUSIP) would look maximally "crowded" by construction. Its change measures are left empty, and `return_coverage.csv` counts these cases.
+8. **Reporting errors in 13F values.** Some filers report dollars when they should report thousands, or the reverse. Holder counts don't use values. The size ranking uses each stock's *median* implied price across filers, so a few bad filers can't move it.
+9. **Stock splits.** Share counts are not split-adjusted in 13F filings. The buyer and seller measure adjusts last quarter's shares by the Yahoo split factor between the two quarter ends.
+10. **Short sample.** The full sample has 12 quarters (11 degrees of freedom for the time-series tests); the v0 sample has 4 (3 degrees of freedom), where t = 2.4 is only p ≈ 0.09. Every table reports p-values with the right degrees of freedom, and we report magnitudes, hit rates and costs, not just stars, and list every specification we ran.
+11. **One stock can move a quintile.** Quintiles hold equal-weighted stocks (20 in v0), so one big winner matters: in v0, dropping NVDA cut the spread by about a fifth. We will report leave-one-out and value-weighted versions with the full sample.
+12. **13F coverage.** 13F filings cover long US equity positions of managers above $100M only. Short positions, derivatives and smaller funds are invisible to us.
 
 ## Team
 
-Harrison Babuschak, Brauston Estes, Jacob Thompson, Juliana Vasquez.
+**Token Ticklers:** Harrison Babuschak, Brauston Estes, Jacob Thompson, Juliana Vasquez.
 
 ## References
 

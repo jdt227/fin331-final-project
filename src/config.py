@@ -13,6 +13,7 @@ from pathlib import Path
 import os
 
 import pandas as pd
+from pandas.tseries.holiday import USFederalHolidayCalendar
 
 # ---------------------------------------------------------------- paths
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,11 @@ PROVENANCE_FILE = RAW / "provenance.csv"     # one row per raw input pull
 FIGI_CACHE = RAW / "openfigi_cache.json"     # raw OpenFIGI responses by CUSIP
 CUSIP_MAP = RAW / "cusip_ticker_map.csv"     # parsed CUSIP -> ticker map
 PRICES = RAW / "prices_daily.parquet"        # yfinance adjusted closes + splits
+PRICE_REQUESTS = RAW / "prices_requests.csv" # date window requested for each ticker
+# Hand-reviewed CUSIP -> ticker entries for stocks OpenFIGI can no longer map to a U.S.
+# listing (acquired / delisted firms, changed CUSIPs, foreign-incorporated CINS codes).
+# Without it, the universe would silently drop them: survivorship bias.
+MANUAL_MAP = ROOT / "data" / "manual_ticker_map.csv"
 
 
 def ensure_dirs():
@@ -47,6 +53,9 @@ HOLDINGS_QUARTERS = [FIRST_QUARTER - 1] + SIGNAL_QUARTERS
 
 UNIVERSE_SIZE = int(os.environ.get("CROWD_UNIVERSE_SIZE", 100 if QUICK else 500))
 CANDIDATE_POOL = int(os.environ.get("CROWD_CANDIDATE_POOL", int(UNIVERSE_SIZE * 1.6)))
+# OpenFIGI securityType2 values that count as U.S. common equity (REIT common shares are
+# common stock; ETFs, ADRs and preferreds are not).
+COMMON_TYPES = {"Common Stock", "REIT"}
 
 # ---------------------------------------------------------------- timing rules
 FILING_DEADLINE_DAYS = 45                        # 13F due 45 days after quarter end
@@ -57,9 +66,16 @@ def quarter_end(q: pd.Period) -> pd.Timestamp:
     return q.end_time.normalize()
 
 
+_HOLIDAYS = set(USFederalHolidayCalendar().holidays("2000-01-01", "2035-12-31"))
+
+
 def filing_deadline(q: pd.Period) -> pd.Timestamp:
-    """Last calendar day a 13F for quarter q counts as 'on time' in this project."""
-    return quarter_end(q) + pd.Timedelta(days=FILING_DEADLINE_DAYS)
+    """Last day a 13F for quarter q counts as 'on time': quarter end + 45 days, moved to
+    the next business day if day 45 is a weekend or federal holiday (SEC filing rules)."""
+    d = quarter_end(q) + pd.Timedelta(days=FILING_DEADLINE_DAYS)
+    while d.weekday() >= 5 or d in _HOLIDAYS:
+        d += pd.Timedelta(days=1)
+    return d
 
 
 # Price window: from well before the first lagged formation date (for past-return and

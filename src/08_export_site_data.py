@@ -54,6 +54,7 @@ site = {
     "pooled_ols": table("pooled_ols.csv"),
     "filing_counts": table("filing_filter_counts.csv"),
     "mapping": table("cusip_mapping_report.csv"),
+    "exclusions": table("universe_exclusions.csv"),
     "coverage": table("return_coverage.csv"),
     "hand_checks": table("hand_checks.csv"),
     "specs": table("specs_run.csv"),

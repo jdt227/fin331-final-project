@@ -2,23 +2,27 @@
 Make a small FAKE raw-data folder in the exact SEC / OpenFIGI / price formats, so the
 whole pipeline can be tested in about a minute without internet.
 
-    python tests/make_fake_raw.py /tmp/crowd_test
-    CROWD_DATA_DIR=/tmp/crowd_test/data CROWD_OUTPUT_DIR=/tmp/crowd_test/outputs \
-        CROWD_UNIVERSE_SIZE=40 CROWD_CANDIDATE_POOL=60 python run_all.py
+    python tests/make_fake_raw.py crowd_test       (default: <system temp dir>/crowd_test)
+    CROWD_DATA_DIR=crowd_test/data CROWD_OUTPUT_DIR=crowd_test/outputs \
+        CROWD_UNIVERSE_SIZE=40 CROWD_CANDIDATE_POOL=60 python run_all.py --from 2
 
 Built-in traps the pipeline must handle: late filers, amendments, notice filings,
 duplicate originals, option and principal-amount rows, the 2023 $000s -> $ unit change,
-an ETF in the top holdings, a 4:1 stock split, and a ticker with no price data.
+an ETF in the top holdings, a 4:1 stock split, a ticker with no price data, a second
+share class of the same issuer (CLSB), a stock with no holders in the first quarter
+(NEWCO), a REIT (REITX, must be kept) and a stock with only a foreign listing (OLDCO,
+must appear in universe_exclusions.csv).
 """
 import json
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-root = Path(sys.argv[1] if len(sys.argv) > 1 else "/tmp/crowd_test")
+root = Path(sys.argv[1] if len(sys.argv) > 1 else Path(tempfile.gettempdir()) / "crowd_test")
 import os
 os.environ["CROWD_DATA_DIR"] = str(root / "data")
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -29,14 +33,18 @@ config.ensure_dirs()
 
 # ---------------------------------------------------------------- securities
 N_STOCKS, N_MGRS = 80, 400
-tickers = ["AAPL", "SPLT", "ETFX", "GONE"] + [f"S{i:03d}" for i in range(N_STOCKS - 4)]
+SPECIAL = ["AAPL", "SPLT", "ETFX", "GONE", "CLSA", "CLSB", "NEWCO", "REITX", "OLDCO"]
+tickers = SPECIAL + [f"S{i:03d}" for i in range(N_STOCKS - len(SPECIAL))]
 cusips = ["037833100"] + [f"{rng.integers(10**5, 10**6)}{i % 10}10" for i in range(1, N_STOCKS)]
 cusips = [c[:9].ljust(9, "0") for c in cusips]
+cusips[5] = cusips[4][:6] + "305"          # CLSB: same issuer (first 6 digits) as CLSA
 assert len(set(cusips)) == N_STOCKS
-names = ["APPLE INC", "SPLITCO CORP", "FAKE ETF TRUST", "GONE CORP"] + \
-        [f"STOCK{i:03d} INC" for i in range(N_STOCKS - 4)]
+names = ["APPLE INC", "SPLITCO CORP", "FAKE ETF TRUST", "GONE CORP", "CLASSY CORP CL A",
+         "CLASSY CORP CL C", "NEWCO INC", "REIT TRUST INC", "OLDCO INC"] + \
+        [f"STOCK{i:03d} INC" for i in range(N_STOCKS - len(SPECIAL))]
 popularity = rng.uniform(0.02, 0.6, N_STOCKS)
 popularity[0], popularity[2] = 0.9, 0.85
+popularity[4:9] = [0.7, 0.65, 0.8, 0.75, 0.8]     # make the traps big enough to matter
 
 # ---------------------------------------------------------------- prices
 dates = pd.bdate_range(config.PRICE_START, config.PRICE_END)
@@ -53,7 +61,10 @@ for j, t in enumerate(tickers):
                               "split_ratio": sr}))
 rows.append(pd.DataFrame({"date": dates, "ticker": "SPY", "adj_close": mkt, "split_ratio": 0.0}))
 pd.concat(rows).to_parquet(config.PRICES, index=False)
-(config.RAW / "prices_tried_empty.txt").write_text("GONE")
+pd.DataFrame({"ticker": tickers + ["SPY"], "start": config.PRICE_START,
+              "end": config.PRICE_END, "pulled_at_utc": "FAKE",
+              "rows": [0 if t == "GONE" else len(dates) for t in tickers + ["SPY"]]}
+             ).to_csv(config.PRICE_REQUESTS, index=False)
 px = pd.DataFrame(level, index=dates, columns=tickers)
 
 
@@ -101,6 +112,8 @@ for q in config.HOLDINGS_QUARTERS:
                 continue
             drift = 0.15 * np.sin(q.ordinal / 2 + np.arange(N_STOCKS))
             hold = rng.random(N_STOCKS) < np.clip(popularity + drift, 0.01, 0.97)
+            if q == config.HOLDINGS_QUARTERS[0]:
+                hold[tickers.index("NEWCO")] = False   # NEWCO is new after quarter 1
             for j in np.where(hold)[0]:
                 sh = int(rng.integers(1_000, 500_000))
                 if tickers[j] == "SPLT" and qend >= split_date:
@@ -132,11 +145,12 @@ for name, T in tables.items():
 # ---------------------------------------------------------------- OpenFIGI cache
 cache = {}
 for c, t, n in zip(cusips, tickers, names):
-    typ2 = "Mutual Fund" if t == "ETFX" else "Common Stock"
+    typ2 = {"ETFX": "Mutual Fund", "REITX": "REIT"}.get(t, "Common Stock")
+    exch = "GR" if t == "OLDCO" else "US"     # OLDCO: only a foreign listing today
     cache[c] = {"pulled_at_utc": "FAKE", "error": None, "data": [
-        {"ticker": t, "name": n, "exchCode": "US", "securityType": "ETP" if t == "ETFX"
+        {"ticker": t, "name": n, "exchCode": exch, "securityType": "ETP" if t == "ETFX"
          else "Common Stock", "securityType2": typ2, "marketSector": "Equity"},
-        {"ticker": t, "name": n, "exchCode": "UN", "securityType": "Common Stock",
-         "securityType2": typ2, "marketSector": "Equity"}]}
+        {"ticker": t, "name": n, "exchCode": "UN" if exch == "US" else "GF",
+         "securityType": "Common Stock", "securityType2": typ2, "marketSector": "Equity"}]}
 config.FIGI_CACHE.write_text(json.dumps(cache))
 print(f"Fake raw data written to {root / 'data'} ({len(needed)} SEC zips)")

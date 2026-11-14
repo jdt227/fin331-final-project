@@ -1,6 +1,6 @@
 # Crowded Trades: What Happens When the Institutions Pile In?
 
-**Harrison Babuschak · Brauston Estes · Jacob Thompson · Juliana Vasquez**
+**Team Token Ticklers:** Harrison Babuschak · Brauston Estes · Jacob Thompson · Juliana Vasquez
 FIN 331 Data Science for Finance · Lehigh University · Fall 2026
 
 ---
@@ -47,20 +47,21 @@ One row is **one stock × one 13F report quarter.** The key `(ticker, quarter)` 
 | `dbreadth` | **Primary signal.** Change in ownership breadth: among managers that filed in both quarters, the change in the share holding the stock (percentage points) |
 | `net_buyer_frac` | (Buyers − sellers) / (buyers + sellers) among those managers, with shares adjusted for splits |
 | `crowd_score` | Dashboard score, 0–100: average of the within-quarter percentile ranks of `n_holders` and `dbreadth` |
-| `filing_deadline`, `formation_date`, `holding_end_date` | Quarter end + 45 days; first trading day after it; next quarter's formation date |
+| `filing_deadline`, `formation_date`, `holding_end_date` | Quarter end + 45 days (next business day if that's a weekend or holiday); first trading day after it; next quarter's formation date |
 | `ret_fwd`, `exret_fwd` | Return from formation date to holding end date; same minus SPY |
 | `ret_past`, `vol_63d`, `log_inst_dollar` | Controls: prior-quarter return, 63-day volatility, log institutional dollar holdings |
 
 ### Real rows from the v0 run
 
-Four stocks in report quarter 2023Q3, copied from `outputs/tables/sample_rows.md`. Holdings are as of 30 Sep 2023, public by the 14 Nov 2023 deadline, and the return runs from 15 Nov 2023 to 15 Feb 2024. Returns are decimals: 0.486 = 48.6%.
+Five stocks in report quarter 2023Q3, copied from `outputs/tables/sample_rows.md`. Holdings are as of 30 Sep 2023, public by the 14 Nov 2023 deadline, and the return runs from 15 Nov 2023 to 15 Feb 2024. Returns are decimals: 0.486 = 48.6%.
 
 | quarter | ticker | n_holders | n_holders_lag | dbreadth | net_buyer_frac | crowd_score | formation_date | ret_fwd | exret_fwd |
 |---|---|---|---|---|---|---|---|---|---|
-| 2023Q3 | AAPL | 4240 | 4203 | 0.296 | -0.158 | 80.2 | 2023-11-15 | -0.021 | -0.142 |
+| 2023Q3 | AAPL | 4240 | 4203 | 0.296 | -0.158 | 80.8 | 2023-11-15 | -0.021 | -0.142 |
 | 2023Q3 | NVDA | 3381 | 3258 | 1.56 | 0.055 | 96.0 | 2023-11-15 | 0.486 | 0.365 |
-| 2023Q3 | TSLA | 2675 | 2663 | 0.109 | 0.196 | 65.0 | 2023-11-15 | -0.175 | -0.295 |
-| 2023Q3 | JPM | 3405 | 3355 | 0.53 | 0.001 | 84.7 | 2023-11-15 | 0.209 | 0.088 |
+| 2023Q3 | TSLA | 2675 | 2663 | 0.109 | 0.196 | 66.5 | 2023-11-15 | -0.175 | -0.295 |
+| 2023Q3 | JPM | 3405 | 3355 | 0.53 | 0.001 | 85.2 | 2023-11-15 | 0.209 | 0.088 |
+| 2023Q3 | XOM | 3301 | 3231 | 0.608 | 0.015 | 86.0 | 2023-11-15 | 0.010 | -0.111 |
 
 Reading the NVDA row: 3,381 managers held it, up from 3,258. Among managers who filed in both quarters, the share holding NVDA rose 1.56 percentage points, which made it one of the most crowded stocks that quarter (score 96). It then beat SPY by 36.5% over the next quarter.
 
@@ -72,8 +73,10 @@ Signals for the 12 report quarters **2022Q1–2024Q4**. Holdings from 2021Q4 are
 
 ### Sample conditions
 
-- **Stocks:** each quarter, the 500 largest U.S. common stocks by 13F-reported institutional dollar holdings. Only information available at that time is used: no "today's S&P 500" list, which would create survivorship bias. ETFs, ADRs, preferred shares and funds are excluded using OpenFIGI security types.
-- **Managers:** original Form 13F-HR holdings or combination reports filed **on or before quarter end + 45 days**. Amendments and late filings are excluded, because they were not public at the signal date.
+- **Stocks:** each quarter, the 500 largest U.S. common stocks by 13F-reported institutional dollar holdings. Only information available at that time is used: no "today's S&P 500" list, which would create survivorship bias. REITs and foreign-incorporated firms whose ordinary shares trade in the U.S. (Linde, Accenture) count as common stock. ETFs, ADRs, preferred shares and funds are excluded using OpenFIGI security types. Each issuer enters once, through its larger share class (GOOGL, not also GOOG).
+- **No survivors-only filter:** stocks that were acquired or changed CUSIP after the sample (Activision, Pioneer, Lam Research) are kept, through a hand-reviewed CUSIP → ticker map (`data/manual_ticker_map.csv`). Every large candidate we exclude is listed with its reason in `outputs/tables/universe_exclusions.csv`.
+- **Managers:** original Form 13F-HR holdings or combination reports filed **on or before the filing deadline**: quarter end + 45 days, moved to the next business day when day 45 falls on a weekend or holiday. Amendments and late filings are excluded, because they were not public at the signal date.
+- **Change measures** need the stock to have 13F holders in the previous quarter; a newly listed CUSIP has no "change in crowding" that quarter.
 - **Positions:** common shares only. Option positions (`PUTCALL`) and principal-amount rows are excluded.
 
 ### Variables
@@ -91,8 +94,9 @@ Signals for the 12 report quarters **2022Q1–2024Q4**. Holdings from 2021Q4 are
 | Input | Source | How we get it | Where it lives in the repo |
 |---|---|---|---|
 | Form 13F holdings | [SEC Form 13F data sets](https://www.sec.gov/data-research/sec-markets-data/form-13f-data-sets): free, tab-delimited, about 50–150 MB per zip | `src/01_download_13f.py` | `data/raw/sec_13f/` (git-ignored, re-downloadable) |
-| CUSIP → ticker, security type | [OpenFIGI API](https://www.openfigi.com/api) | `src/03_universe_and_cusip_map.py`, cached | `data/raw/openfigi_cache.json` |
-| Adjusted prices, splits | Yahoo Finance (`yfinance`) | `src/04_download_prices.py` | `data/raw/prices_daily.parquet` |
+| CUSIP → ticker, security type | [OpenFIGI API](https://www.openfigi.com/api) | `src/03_universe_and_cusip_map.py`, cached and committed | `data/raw/openfigi_cache.json` |
+| Tickers for acquired firms and changed CUSIPs | Hand review of the 13F issuer name (reason and source on every row) | Edited by hand, read by step 3 | `data/manual_ticker_map.csv` |
+| Adjusted prices, splits | Yahoo Finance (`yfinance`) | `src/04_download_prices.py`, cached and committed | `data/raw/prices_daily.parquet` |
 
 `data/raw/provenance.csv` logs the URL, pull time and SHA-256 hash of every raw input.
 
@@ -141,34 +145,40 @@ The v0 run covers only four quarters (2023, the 100 largest stocks), so these nu
 
 | Crowding quintile (`dbreadth`) | Q1 (least) | Q2 | Q3 | Q4 | Q5 (most) |
 |---|---|---|---|---|---|
-| Avg next-quarter return minus SPY | −2.3% | −1.6% | −1.7% | +0.2% | +3.7% |
+| Avg next-quarter return minus SPY | −1.6% | −2.6% | −1.0% | −0.6% | +3.5% |
 
-| Test | Estimate | t-stat |
-|---|---|---|
-| Q5 − Q1, filing-date timing (correct) | **+5.98% per quarter** | 2.42 |
-| Q5 − Q1, quarter-end timing (look-ahead) | +7.54% per quarter | 2.49 |
-| Fama–MacBeth, per 1 SD of `dbreadth`, with controls | +1.12% per quarter | 2.67 |
-| Pooled OLS, quarter fixed effects, clustered by stock | +1.15% per quarter | 1.23 |
-| Q5 − Q1 after trading costs (64% leg turnover, 10 bp/side) | +5.72% per quarter | |
+| Test | Estimate | t-stat | p-value |
+|---|---|---|---|
+| Q5 − Q1, filing-date timing (correct) | **+5.18% per quarter** | 2.11 | 0.13 |
+| Q5 − Q1, quarter-end timing (look-ahead) | +6.81% per quarter | 2.39 | 0.10 |
+| Fama–MacBeth, per 1 SD of `dbreadth`, with controls | +0.91% per quarter | 2.17 | 0.12 |
+| Pooled OLS, quarter fixed effects, clustered by stock | +1.06% per quarter | 1.15 | 0.25 |
+| Q5 − Q1 after trading costs (62% leg turnover, 10 bp/side) | +4.93% per quarter | | |
 
-**What this suggests so far.** In 2023, stocks that more managers moved into *outperformed*. That points toward the informed-buying story and against our pre-stated hypothesis. The look-ahead version overstates the spread by about 1.6 points per quarter, which is exactly the bias our timing rule removes. The *level* of crowding behaves differently: in Fama–MacBeth, stocks with more holders earned lower returns after controlling for size (−2.1% per SD, t = −3.9).
+*p-values for the sorts and Fama–MacBeth use the t distribution with 3 degrees of freedom (4 quarters).*
 
-**Why we don't trust it yet.** There are four quarters, and 2023 was dominated by the AI rally: NVDA is in the top crowding quintile. The pooled regression is not significant. The full 2022–2024 run, which includes the 2022 bear market, is the real test.
+**What this suggests so far.** In 2023, stocks that more managers moved into *outperformed* in three of four quarters. That leans toward the informed-buying story and against our pre-stated hypothesis, but **none of the `dbreadth` tests is significant at the 5% level**. The look-ahead version overstates the spread by about 1.6 points per quarter, which is the bias our timing rule removes. One exploratory result, which we did not pre-register: the *level* of crowding has the opposite sign. Stocks with more holders earned about −2.1% per SD after controlling for size (pooled OLS t = −2.5, p = 0.01; Fama–MacBeth p = 0.09). It is the strongest of the 13 specifications we ran, so we treat it as a lead to test in the full sample, not a finding.
+
+**Why we don't trust it yet.** There are four quarters, and 2023 was dominated by the AI rally: NVDA is in the top crowding quintile, and dropping it cuts the spread from +5.2% to +4.1% per quarter (p = 0.16). The full 2022–2024 run, which includes the 2022 bear market, is the real test.
 
 ## Threats and checks
 
 | How an auditor could break the project | What we do |
 |---|---|
 | **Look-ahead:** using quarter-end dates instead of filing dates | Returns start the first trading day after quarter end + 45 days. Late filings and amendments are dropped. An `assert` checks that formation follows the deadline. We report the wrong-timing result side by side |
-| **CUSIP → ticker mapping errors** | OpenFIGI with a preference for the U.S. composite listing of common stock. Every 13F name vs. OpenFIGI name mismatch is written to `cusip_name_mismatches.csv` and reviewed by hand. CUSIPs that collide on one ticker keep the larger holding |
-| **Survivorship:** Yahoo drops delisted tickers | The universe is built point-in-time from 13F, not from today's index. The share of stock-quarters missing a return is reported in `return_coverage.csv` and disclosed. CRSP is the fix if we gain access |
+| **CUSIP → ticker mapping errors** | OpenFIGI with a preference for the U.S. composite listing of common stock. Every 13F name vs. OpenFIGI name mismatch is written to `cusip_name_mismatches.csv` and reviewed by hand. CUSIPs that collide on one ticker keep the larger holding, and each issuer enters once |
+| **Survivorship in the universe:** OpenFIGI only knows today's listings | The universe is built point-in-time from 13F, not from today's index. Acquired firms and changed CUSIPs are kept through a hand-reviewed map; CINS codes are retried with OpenFIGI's CINS lookup. Every large excluded candidate and its reason is in `universe_exclusions.csv` and on the dashboard |
+| **Survivorship in returns:** Yahoo drops delisted tickers | The share of stock-quarters missing a return is reported in `return_coverage.csv` and disclosed. CRSP is the fix if we gain access |
+| **Weekend deadlines** | When day 45 is a weekend or holiday, the deadline (and so the formation date) moves to the next business day, as the SEC's rules do |
+| **New listings look "crowded"** | A stock with no 13F holders last quarter gets no change-in-crowding value, instead of landing in the top quintile by construction |
 | **Size of the 13F files** | Zips are git-ignored and re-downloaded. Information tables are read in 1-million-row chunks and filtered immediately. Holdings are stored per quarter as Parquet |
 | **13F unit change and filer errors** | $000s → $ conversion by filing date (2023-01-03). The size ranking uses the median implied price across filers, so a few mis-reporting filers can't move it |
 | **Stock splits** fake "buying" | Last quarter's shares are multiplied by the Yahoo split factor between the two quarter ends before buyers and sellers are counted |
 | **Broken merges / duplicate keys** | Every merge uses `validate=`. Keys are asserted unique at every stage |
 | **Numbers that don't trace** | The dashboard reads only `outputs/`. Headline numbers come from `outputs/tables/headline_numbers.json` |
 | **Hand checks** | `07_hand_checks.py` re-counts one stock's holders straight from the raw zips, recomputes one return from raw prices, re-derives one formation date, and re-sorts one quarter by hand. Any mismatch stops `run_all.py` |
-| **Short sample (12 quarters)** | We emphasise magnitudes and hit rates, report every specification, and propose extending to 2014–2026 |
+| **Short sample (12 quarters)** | Every test reports a p-value with the right degrees of freedom (11 in the full sample, 3 in v0). We emphasize magnitudes and hit rates, report every specification, and propose extending to 2014–2026 |
+| **One stock drives a quintile** | Leave-one-out and value-weighted spreads in the full sample |
 
 ## Dashboard
 

@@ -1,0 +1,138 @@
+ticker,start,end,pulled_at_utc,rows
+AAPL,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ABBV,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ABT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ADBE,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ADI,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ADP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AFL,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AMAT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AMD,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AMGN,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AMZN,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AVGO,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+AXP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BA,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BAC,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BAH,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BDX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BKNG,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BMY,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BRK-A,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BRK-B,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BSX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+BX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+C,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CARR,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CAT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CDNS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CI,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CMCSA,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CME,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+COP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+COST,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CRM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CSCO,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CVS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+CVX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+DE,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+DHR,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+DIS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+EL,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ELV,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+EOG,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+EW,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+FDX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+FISV,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+GE,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+GILD,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+GOOG,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+GOOGL,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+GS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+HD,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+HUM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+IBM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+IDXX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+INTC,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+INTU,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ISRG,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ITW,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+JNJ,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+JPM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+KLAC,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+KO,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+LLY,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+LMT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+LOW,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MA,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MCD,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MCHP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MCO,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MDLZ,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+META,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MO,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MRK,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MRSH,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MSFT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+MU,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NDAQ,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NEE,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NFLX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NKE,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NOC,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NOW,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+NVDA,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ORCL,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PANW,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PEP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PFE,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PG,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PGR,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+PYPL,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+QCOM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+REGN,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ROK,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ROP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+RTX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+RY,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SBUX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SCHW,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SLB,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SNPS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SPGI,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SPY,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+SYK,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+T,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TD,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TGT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TJX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TMO,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TMUS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TSLA,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+TXN,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+UBER,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+UNH,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+UNP,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+UPS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+V,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+VRSK,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+VRTX,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+VZ,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+WFC,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+WM,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+WMT,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ZTS,2022-09-20,2024-06-04,unknown (inferred from cached data),428
+ACN,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+AMT,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+BLK,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+CB,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+EQIX,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+ETN,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+HON,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+LIN,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+LRCX,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+MDT,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+PLD,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428
+XOM,2022-09-20,2024-06-04,2026-11-14T21:52:32Z,428

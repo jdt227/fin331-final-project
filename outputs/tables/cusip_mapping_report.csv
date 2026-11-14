@@ -1,7 +1,10 @@
 check,value
 candidate CUSIPs,200
-CUSIPs with any OpenFIGI result,189
-CUSIPs mapped to US common stock,154
+CUSIPs with any OpenFIGI result,197
+CUSIPs mapped through the ID_CINS retry,0
+CUSIPs mapped from the hand-reviewed manual map,18
+CUSIPs mapped to US common equity (incl. REITs),175
 universe stock-quarters,400
 universe quarters with < UNIVERSE_SIZE stocks,0
-universe rows where 13F name first word != OpenFIGI name first word,15
+excluded candidates that need review (no match / no U.S. listing) and would be in the top N,0
+universe rows where 13F name first word != OpenFIGI name first word,12

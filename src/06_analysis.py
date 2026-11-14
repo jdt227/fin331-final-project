@@ -27,6 +27,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+from scipy import stats
 
 sys.path.insert(0, os.path.dirname(__file__))
 import config
@@ -49,13 +50,21 @@ def tstat(x):
     return x.mean() / (x.std(ddof=1) / np.sqrt(len(x))) if len(x) > 1 else np.nan
 
 
+def pval(x):
+    """Two-sided p-value of the mean, t distribution with n - 1 degrees of freedom.
+    With few quarters this matters: t = 2.4 with 3 df is p = 0.09, not p < 0.05."""
+    x = pd.Series(x).dropna()
+    t = tstat(x)
+    return float(2 * stats.t.sf(abs(t), len(x) - 1)) if len(x) > 1 else np.nan
+
+
 def sort_results(signal, ret):
     df = add_bins(d.dropna(subset=[ret]), signal)
     by_q = df.groupby(["quarter", "bin"])[ret].mean().unstack()
     ls = (by_q[config.N_BINS] - by_q[1]).rename("long_short")
     specs.append({"method": "quintile sort", "signal": signal, "return": ret,
                   "controls": "none", "n_quarters": len(ls), "estimate": ls.mean(),
-                  "t_stat": tstat(ls)})
+                  "t_stat": tstat(ls), "p_value": pval(ls)})
     return df, by_q, ls
 
 
@@ -66,11 +75,12 @@ for sig in config.SIGNALS:
     m = by_q.mean()
     for b in m.index:
         qrows.append({"signal": sig, "quintile": b, "mean_exret_fwd": m[b],
-                      "t_stat": tstat(by_q[b]),
+                      "t_stat": tstat(by_q[b]), "p_value": pval(by_q[b]),
                       "avg_stocks": df[df["bin"] == b].groupby("quarter").size().mean()})
     for q, v in ls.items():
         lsrows.append({"signal": sig, "quarter": q, "long_short": v})
     summ.append({"signal": sig, "mean_q5_minus_q1": ls.mean(), "t_stat": tstat(ls),
+                 "p_value": pval(ls), "df": len(ls) - 1,
                  "share_quarters_positive": (ls > 0).mean(), "n_quarters": len(ls),
                  "primary": sig == config.PRIMARY_SIGNAL})
 pd.DataFrame(qrows).to_csv(config.TABLES / "quintile_returns.csv", index=False)
@@ -87,7 +97,7 @@ for ret in ["exret_fwd", "exret_naive"]:
         specs.pop()  # same as the primary sort already logged above
     la.append({"timing": "filing-date (correct)" if ret == "exret_fwd"
                else "quarter-end (look-ahead)", "return_column": ret,
-               "mean_q5_minus_q1": ls.mean(), "t_stat": tstat(ls)})
+               "mean_q5_minus_q1": ls.mean(), "t_stat": tstat(ls), "p_value": pval(ls)})
 pd.DataFrame(la).to_csv(config.TABLES / "lookahead_comparison.csv", index=False)
 
 # ---------------------------------------------------------------- 3. regressions
@@ -108,21 +118,24 @@ for sig in config.SIGNALS:
     coefs = pd.DataFrame(coefs, columns=["const"] + cols)
     for c in coefs.columns:
         fm_rows.append({"signal": sig, "variable": c, "coef": coefs[c].mean(),
-                        "t_stat": tstat(coefs[c]), "n_quarters": len(coefs),
+                        "t_stat": tstat(coefs[c]), "p_value": pval(coefs[c]),
+                        "n_quarters": len(coefs),
                         "avg_n_stocks": len(r) / len(coefs)})
     specs.append({"method": "Fama-MacBeth", "signal": sig, "return": "exret_fwd",
                   "controls": "+".join(controls), "n_quarters": len(coefs),
-                  "estimate": coefs[sig].mean(), "t_stat": tstat(coefs[sig])})
+                  "estimate": coefs[sig].mean(), "t_stat": tstat(coefs[sig]),
+                  "p_value": pval(coefs[sig])})
     fit = smf.ols(f"exret_fwd ~ {' + '.join(zc)} + C(quarter)", data=r).fit(
         cov_type="cluster", cov_kwds={"groups": pd.factorize(r["ticker"])[0]})
     for c in zc:
         ols_rows.append({"signal": sig, "variable": c, "coef": fit.params[c],
-                         "t_stat": fit.tvalues[c], "n_obs": int(fit.nobs),
+                         "t_stat": fit.tvalues[c], "p_value": fit.pvalues[c],
+                         "n_obs": int(fit.nobs), "n_clusters": r["ticker"].nunique(),
                          "r2": fit.rsquared})
     specs.append({"method": "pooled OLS, quarter FE, cluster by stock", "signal": sig,
                   "return": "exret_fwd", "controls": "+".join(controls),
                   "n_quarters": r["quarter"].nunique(), "estimate": fit.params[sig + "_z"],
-                  "t_stat": fit.tvalues[sig + "_z"]})
+                  "t_stat": fit.tvalues[sig + "_z"], "p_value": fit.pvalues[sig + "_z"]})
 pd.DataFrame(fm_rows).to_csv(config.TABLES / "fama_macbeth.csv", index=False)
 pd.DataFrame(ols_rows).to_csv(config.TABLES / "pooled_ols.csv", index=False)
 
@@ -185,6 +198,9 @@ head = {
     "primary_signal": config.PRIMARY_SIGNAL,
     "primary_q5_minus_q1_per_quarter": float(p["mean_q5_minus_q1"]),
     "primary_t_stat": float(p["t_stat"]),
+    "primary_p_value": float(p["p_value"]),
+    "primary_df": int(p["df"]),
+    "primary_share_quarters_positive": float(p["share_quarters_positive"]),
     "primary_net_of_costs_per_quarter": float(mag["net_per_quarter"].iloc[0]),
     "n_specifications_run": len(specs),
 }

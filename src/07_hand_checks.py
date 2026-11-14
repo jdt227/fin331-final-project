@@ -35,7 +35,12 @@ row = cands[cands["ticker"] == "AAPL"]
 row = (row if len(row) else cands.head(1)).iloc[0]
 cusip, ticker, q = row["cusip"], row["ticker"], pd.Period(qmid, freq="Q")
 qend = q.end_time.normalize()
+# 45 days after quarter end; if that is a weekend or federal holiday, the next business day.
+from pandas.tseries.holiday import USFederalHolidayCalendar
+hol = set(USFederalHolidayCalendar().holidays(qend, qend + pd.Timedelta(days=60)))
 deadline = qend + pd.Timedelta(days=45)
+while deadline.weekday() >= 5 or deadline in hol:
+    deadline += pd.Timedelta(days=1)
 print(f"Hand-checking {ticker} ({cusip}) in {qmid}")
 
 # ---- Check A (steps 1-3): number of 13F holders, straight from the raw zips.
@@ -84,8 +89,8 @@ p1 = p[p.index <= row["holding_end_date"]].iloc[-1]
 record("4-5 returns", f"ret_fwd {ticker} {qmid}", float(row["ret_fwd"]), p1 / p0 - 1, 1e-12)
 
 # ---- Check C (step 5): formation date is the first trading day after the deadline.
-spy = pd.read_parquet(config.PRICES).query("ticker == @config.MARKET_TICKER")["date"]
-first_after = spy[spy > deadline].min()
+# Uses this stock's own trading dates (the pipeline uses SPY's), and the deadline above.
+first_after = p.index[p.index > deadline].min()
 record("5 timing", f"formation_date {qmid} (days since 1970)",
        row["formation_date"].value / 8.64e13, first_after.value / 8.64e13)
 
