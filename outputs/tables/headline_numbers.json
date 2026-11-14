@@ -1,0 +1,13 @@
+{
+  "sample_quarters": "2023Q1 to 2023Q4",
+  "n_stock_quarters": 400,
+  "n_with_forward_return": 400,
+  "primary_signal": "dbreadth",
+  "primary_q5_minus_q1_per_quarter": 0.05175045231446834,
+  "primary_t_stat": 2.1097287696242626,
+  "primary_p_value": 0.12539940916201742,
+  "primary_df": 3,
+  "primary_share_quarters_positive": 0.75,
+  "primary_net_of_costs_per_quarter": 0.04928378564780168,
+  "n_specifications_run": 13
+}

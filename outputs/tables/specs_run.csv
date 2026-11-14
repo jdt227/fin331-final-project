@@ -1,0 +1,14 @@
+method,signal,return,controls,n_quarters,estimate,t_stat,p_value
+quintile sort,dbreadth,exret_fwd,none,4,0.05175045231446834,2.1097287696242626,0.12539940916201742
+quintile sort,pct_chg_holders,exret_fwd,none,4,0.044626009307414054,1.9849209604379927,0.14137958082321872
+quintile sort,net_buyer_frac,exret_fwd,none,4,0.021967645629504165,1.1355374044084594,0.3386623997173883
+quintile sort,n_holders,exret_fwd,none,4,0.003975107563154616,0.3194098106538682,0.7703656776172118
+quintile sort,dbreadth,exret_naive,none,4,0.06810183463908161,2.38537006076411,0.09714597732581037
+Fama-MacBeth,dbreadth,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,0.009082159769234127,2.1739626592973242,0.11801591589417673
+"pooled OLS, quarter FE, cluster by stock",dbreadth,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,0.010585424504593152,1.1469465513387076,0.2514037116151009
+Fama-MacBeth,pct_chg_holders,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,0.008231313862750222,3.136498082882234,0.05180385797480475
+"pooled OLS, quarter FE, cluster by stock",pct_chg_holders,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,0.008229600178025563,0.9374448601518461,0.34852977452627154
+Fama-MacBeth,net_buyer_frac,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,-0.0014695835183870776,-0.34435026754294124,0.7533078425747858
+"pooled OLS, quarter FE, cluster by stock",net_buyer_frac,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,-0.0005495309253165914,-0.12125180897254789,0.9034915891682604
+Fama-MacBeth,n_holders,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,-0.02097955063653257,-2.519917590753809,0.08618300706491361
+"pooled OLS, quarter FE, cluster by stock",n_holders,exret_fwd,ret_past+vol_63d+log_inst_dollar,4,-0.020582248861540364,-2.5139480184969707,0.011938802949548943

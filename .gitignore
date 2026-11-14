@@ -1,0 +1,25 @@
+# The SEC zips (1-2 GB) and the parsed intermediate files are large; run_all.py
+# re-creates them (src/01_download_13f.py re-downloads the zips).
+data/raw/sec_13f/
+data/interim/
+*.part
+*.tmp
+
+# Committed on purpose (small): the cached answers from OpenFIGI and Yahoo, so a fresh
+# clone reproduces the exact numbers without re-querying services whose answers change
+# over time. Delete them to force a fresh pull.
+#   data/raw/openfigi_cache.json, data/raw/cusip_ticker_map.csv,
+#   data/raw/prices_daily.parquet, data/raw/prices_requests.csv, data/raw/provenance.csv
+#   data/manual_ticker_map.csv (hand-reviewed CUSIP -> ticker entries)
+
+# Obsolete state file from an earlier version of step 4
+data/raw/prices_tried_empty.txt
+
+# Python / OS / editor
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+.DS_Store
+.venv/
+venv/
+.env

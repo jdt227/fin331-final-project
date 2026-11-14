@@ -1,0 +1,19 @@
+cusip,ticker,include,issuer,reason,source
+00507V109,ATVI,yes,ACTIVISION BLIZZARD INC,Acquired by Microsoft Oct 2023; OpenFIGI now returns only foreign listings,13F issuer name; Nasdaq ticker ATVI until delisting
+03662Q105,ANSS,yes,ANSYS INC,Acquired by Synopsys Jul 2025; no current U.S. listing in OpenFIGI,13F issuer name; Nasdaq ticker ANSS until delisting
+09247X101,BLK,yes,BLACKROCK INC,Old CUSIP; BlackRock moved to a new holding company (new CUSIP) in Oct 2024; same NYSE ticker,13F issuer name; NYSE ticker BLK
+13645T100,CP,yes,CANADIAN PAC RY LTD,CUSIP changed after the Kansas City Southern merger (2023); ordinary shares listed on NYSE,13F issuer name; NYSE ticker CP
+285512109,EA,yes,ELECTRONIC ARTS INC,Taken private (2025-26); OpenFIGI no longer shows a U.S. listing,13F issuer name; Nasdaq ticker EA
+30231G102,XOM,yes,EXXON MOBIL CORP,OpenFIGI returns only non-U.S. listings for this CUSIP,13F issuer name; NYSE ticker XOM
+438516106,HON,yes,HONEYWELL INTERNATIONAL INC,OpenFIGI: no identifier found for this CUSIP,13F issuer name; Nasdaq ticker HON
+512807108,LRCX,yes,LAM RESEARCH CORP,Old CUSIP; changed with the Oct 2024 10-for-1 split,13F issuer name; Nasdaq ticker LRCX
+723787107,PXD,yes,PIONEER NATURAL RESOURCES CO,Acquired by Exxon Mobil May 2024; no current U.S. listing in OpenFIGI,13F issuer name; NYSE ticker PXD until delisting
+928563402,VMW,yes,VMWARE INC CLASS A,Acquired by Broadcom Nov 2023; no current U.S. listing in OpenFIGI,13F issuer name; NYSE ticker VMW until delisting
+G0403H108,AON,yes,AON PLC,Foreign-incorporated (CINS code); ordinary shares listed on NYSE,13F issuer name; NYSE ticker AON
+G1151C101,ACN,yes,ACCENTURE PLC,Foreign-incorporated (CINS code); ordinary shares listed on NYSE,13F issuer name; NYSE ticker ACN
+G29183103,ETN,yes,EATON CORP PLC,Foreign-incorporated (CINS code); ordinary shares listed on NYSE,13F issuer name; NYSE ticker ETN
+G54950103,LIN,yes,LINDE PLC,Foreign-incorporated (CINS code); ordinary shares listed on Nasdaq,13F issuer name; Nasdaq ticker LIN
+G5960L103,MDT,yes,MEDTRONIC PLC,Foreign-incorporated (CINS code); ordinary shares listed on NYSE,13F issuer name; NYSE ticker MDT
+H1467J104,CB,yes,CHUBB LTD,Foreign-incorporated (CINS code); ordinary shares listed on NYSE,13F issuer name; NYSE ticker CB
+N6596X109,NXPI,yes,NXP SEMICONDUCTORS NV,Foreign-incorporated (CINS code); ordinary shares listed on Nasdaq,13F issuer name; Nasdaq ticker NXPI
+N07059210,,no,ASML HOLDING NV,New York Registry Shares of a Dutch issuer; treated like an ADR and excluded,13F issuer name

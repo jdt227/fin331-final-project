@@ -1,0 +1,3 @@
+timing,return_column,mean_q5_minus_q1,t_stat,p_value
+filing-date (correct),exret_fwd,0.05175045231446834,2.1097287696242626,0.12539940916201742
+quarter-end (look-ahead),exret_naive,0.06810183463908161,2.38537006076411,0.09714597732581037
