@@ -15,7 +15,7 @@ We will deliver a **public dashboard that shows a crowding score for any large U
 
 ## Who would pay for this
 
-**A risk manager at a hedge fund or long-only asset manager.** Their portfolio managers are rewarded for good ideas, and good ideas tend to be shared. A risk manager needs to know which positions are also held by many other funds, and whether that overlap has historically signalled weaker returns or sharper drawdowns. Commercial crowding indicators exist and are expensive; our project asks whether a transparent version built from free public filings carries real information.
+**A risk manager at a hedge fund or long-only asset manager.** Their portfolio managers are rewarded for good ideas, and good ideas tend to be shared. A risk manager needs to know which positions are also held by many other funds, and whether that overlap has historically signalled weaker returns or sharper drawdowns. Many investment firms pay for tools that track crowded positions. We want to see whether publicly available SEC filings can provide similar information about potential investment risks.
 
 ## Research question
 
@@ -135,7 +135,7 @@ A 13F describes holdings on the last day of the quarter, but the public sees it 
 3. **Pooled OLS** with quarter fixed effects and standard errors clustered by stock, as a robustness check.
 4. **Economic magnitude.** We turn the spread into a strategy and subtract trading costs: quintile turnover × 10 bp per side. Is the gross spread large enough to matter to a risk manager after costs?
 
-**Why this fits the question.** Sorts show the shape of the relationship in a way a non-specialist can read off a bar chart. Fama–MacBeth asks whether crowding adds information beyond the obvious characteristics that are correlated with it, such as momentum and size. Both methods come from the asset-pricing anomaly tests used in class.
+**Why this fits the question.**  Quintile sorts allow us to compare returns between the most crowded and least crowded stocks. Fama–MacBeth regressions help us determine whether crowding still explains future returns after accounting for other factors, such as past performance and company size. Both methods are commonly used in asset-pricing research and connect to what we have learned in class.
 
 **Guarding against p-hacking.** `dbreadth` is the pre-registered primary signal. The other three measures are reported in full, not cherry-picked. `06_analysis.py` writes every specification it runs to `outputs/tables/specs_run.csv`, and `specs_tried.md` logs every other change by hand.
 
