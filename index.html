@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crowded Trades — 13F crowding and next-quarter returns</title>
+<!--
+  Dashboard for the Crowded Trades project (FIN 331, Lehigh).
+  Every number on this page comes from outputs/site_data.js, which src/08_export_site_data.py
+  builds from the files in outputs/. Rebuild with: python run_all.py
+  No external libraries: open this file directly, or serve it with GitHub Pages.
+-->
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f4f4f2;
+    --surface-1: #fcfcfb;
+    --surface-2: #f0efec;
+    --border: #e1e0dc;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted: #7a7974;
+    --grid: #e6e5e1;
+    --axis: #b9b8b2;
+    --series-1: #2a78d6;      /* blue: positive / primary series */
+    --series-neg: #e34948;    /* red: negative pole of the diverging pair */
+    --series-muted: #b4b3ad;  /* de-emphasised comparison series */
+    --accent-soft: #e8f1fc;
+    --warn-bg: #fff6e0;
+    --warn-border: #f0cf7a;
+    --good: #0b7a0b;
+    --bad: #c03030;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --page: #121211;
+      --surface-1: #1a1a19;
+      --surface-2: #232321;
+      --border: #33332f;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --text-muted: #96958c;
+      --grid: #2c2c29;
+      --axis: #55554f;
+      --series-1: #3987e5;
+      --series-neg: #e66767;
+      --series-muted: #5f5e58;
+      --accent-soft: #1d2b3d;
+      --warn-bg: #2e2714;
+      --warn-border: #6b5a22;
+      --good: #4cc24c;
+      --bad: #f07a7a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--text-primary);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px 64px; }
+  header { padding: 36px 0 8px; }
+  .eyebrow { color: var(--text-muted); font-size: 13px; letter-spacing: .04em; text-transform: uppercase; }
+  h1 { font-size: 30px; line-height: 1.2; margin: 6px 0 6px; letter-spacing: -.01em; }
+  .sub { color: var(--text-secondary); margin: 0; max-width: 760px; }
+  h2 { font-size: 20px; margin: 0 0 4px; }
+  h3 { font-size: 15px; margin: 0 0 2px; }
+  .note { color: var(--text-muted); font-size: 13px; }
+  .badge {
+    display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--text-secondary); margin-left: 6px; vertical-align: middle;
+  }
+  nav.tabs {
+    display: flex; gap: 4px; border-bottom: 1px solid var(--border); margin: 24px 0 24px;
+    position: sticky; top: 0; background: var(--page); z-index: 5;
+  }
+  nav.tabs button {
+    appearance: none; border: 0; background: none; color: var(--text-secondary);
+    font: inherit; font-weight: 500; padding: 12px 14px; cursor: pointer;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  nav.tabs button[aria-selected="true"] { color: var(--text-primary); border-bottom-color: var(--series-1); }
+  nav.tabs button:focus-visible { outline: 2px solid var(--series-1); outline-offset: -2px; }
+  section[role="tabpanel"] { display: none; }
+  section[role="tabpanel"].active { display: block; }
+  .grid { display: grid; gap: 16px; }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (max-width: 860px) { .g4 { grid-template-columns: repeat(2, 1fr); } .g2 { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .card + .card, .grid + .card, .card + .grid, .grid + .grid { margin-top: 16px; }
+  .grid > .card { margin-top: 0; }
+  a { color: var(--series-1); text-decoration: none; font-weight: 600; }
+  a:hover { text-decoration: underline; }
+  td.nowrap { white-space: nowrap; }
+  .tile .label { color: var(--text-secondary); font-size: 13px; }
+  .tile .value { white-space: nowrap; font-size: 26px; font-weight: 650; letter-spacing: -.01em; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .tile .foot { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+  .callout {
+    background: var(--warn-bg); border: 1px solid var(--warn-border); border-radius: 10px;
+    padding: 12px 16px; margin-top: 16px; font-size: 14px;
+  }
+  .prose p { margin: 0 0 10px; max-width: 760px; }
+  .prose p:last-child { margin-bottom: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--text-secondary); font-weight: 600; font-size: 12.5px; background: var(--surface-2); }
+  td.num, th.num { text-align: right; }
+  .tablewrap { overflow-x: auto; margin-top: 10px; }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px;
+         background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 4px; }
+  .controls label { display: flex; flex-direction: column; font-size: 12.5px; color: var(--text-secondary); gap: 4px; }
+  select, input[type="text"] {
+    font: inherit; font-size: 14px; color: var(--text-primary); background: var(--surface-1);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; min-width: 200px;
+  }
+  .chart { width: 100%; margin-top: 8px; }
+  .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+  .chart text { fill: var(--text-muted); font-size: 11.5px; font-family: inherit; }
+  .chart .vlabel { fill: var(--text-secondary); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+  .legend { display: flex; gap: 16px; font-size: 12.5px; color: var(--text-secondary); margin-top: 6px; flex-wrap: wrap; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+  #tip {
+    position: fixed; pointer-events: none; z-index: 50; opacity: 0; transition: opacity .08s;
+    background: var(--surface-1); color: var(--text-primary); border: 1px solid var(--border);
+    border-radius: 8px; padding: 8px 10px; font-size: 12.5px; box-shadow: 0 4px 16px rgba(0,0,0,.12);
+    max-width: 260px; font-variant-numeric: tabular-nums;
+  }
+  #tip b { display: block; margin-bottom: 2px; }
+  .timeline { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0; margin-top: 12px; }
+  .timeline div { border-top: 3px solid var(--axis); padding: 8px 10px 0 0; font-size: 13px; }
+  .timeline div.on { border-top-color: var(--series-1); }
+  .timeline b { display: block; font-size: 13px; }
+  .pos { color: var(--good); } .neg { color: var(--bad); }
+  .ok { color: var(--good); font-weight: 600; }
+  footer { margin-top: 40px; color: var(--text-muted); font-size: 12.5px; }
+  .sortable th { cursor: pointer; user-select: none; }
+  .empty { color: var(--text-muted); padding: 24px 0; text-align: center; }
+</style>
+</head>
+<body>
+<div id="tip" role="tooltip"></div>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">FIN 331 · Data Science for Finance · Lehigh University</div>
+    <h1>Crowded Trades: what happens when the institutions pile in? <span id="modeBadge" class="badge"></span></h1>
+    <p class="sub">Every quarter, managers with over $100M disclose their U.S. stock holdings on SEC Form 13F.
+      We measure how many of them crowd into each stock and test whether that predicts the stock's
+      return over the next quarter, using only information that was public at the time.</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" aria-selected="true" aria-controls="p-overview" id="t-overview">Overview</button>
+    <button role="tab" aria-selected="false" aria-controls="p-method" id="t-method">Methodology</button>
+    <button role="tab" aria-selected="false" aria-controls="p-results" id="t-results">Results</button>
+    <button role="tab" aria-selected="false" aria-controls="p-explore" id="t-explore">Crowding explorer</button>
+  </nav>
+
+  <!-- ===================================================== OVERVIEW -->
+  <section role="tabpanel" id="p-overview" class="active" aria-labelledby="t-overview">
+    <div class="grid g4" id="tiles"></div>
+    <div class="grid g2">
+      <div class="card">
+        <h2>Next-quarter return by crowding quintile</h2>
+        <div class="note">Average return minus SPY. Stocks are sorted each quarter by the change in ownership breadth (our primary measure). Q5 = most crowded.</div>
+        <div class="chart" id="ovQuint"></div>
+      </div>
+      <div class="card prose">
+        <h2>The question</h2>
+        <p><b>Do stocks that many institutions bought last quarter do worse over the next quarter?</b>
+          When many funds move into the same stock, the trade is "crowded." If they all need to sell at once,
+          there are few natural buyers.</p>
+        <p><b>Who would pay for the answer:</b> a risk manager at a fund, deciding whether positions shared with
+          many other funds carry hidden downside.</p>
+        <p><b>Two stories, opposite predictions.</b> Herding can push prices too high, so they fall back
+          (crowded stocks underperform). Or many managers buying independently reflects real information
+          (crowded stocks outperform).</p>
+        <p id="ovTakeaway"></p>
+      </div>
+    </div>
+    <div class="callout" id="ovCaveat"></div>
+  </section>
+
+  <!-- ===================================================== METHODOLOGY -->
+  <section role="tabpanel" id="p-method" aria-labelledby="t-method">
+    <div class="card prose">
+      <h2>Timing: no look-ahead</h2>
+      <p>A 13F reports holdings on the last day of the quarter, but the public sees it up to 45 days later.
+        Every return we test starts <b>after</b> that deadline.</p>
+      <div class="timeline">
+        <div><b>Quarter end</b>Holdings measured. Not public yet.</div>
+        <div class="on"><b>Deadline + 1 trading day</b>Filings are public. Buy at the close (formation date).</div>
+        <div class="on"><b>Next formation date</b>Holding period ends. The return is measured over this window.</div>
+      </div>
+      <p class="note" style="margin-top:10px">We drop amendments and filings made after the deadline, because they were not public on the formation date.</p>
+    </div>
+    <div class="card">
+      <h2>Pipeline</h2>
+      <div class="note">One script per step. <code>python run_all.py</code> rebuilds everything from the raw data.</div>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Step</th><th>Script</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><code>src/01_download_13f.py</code></td><td>Downloads the SEC Form 13F data sets for the filing windows we need</td></tr>
+          <tr><td>2</td><td><code>src/02_parse_13f.py</code></td><td>Keeps original 13F-HR filings made by the 45-day deadline (one per manager-quarter); builds manager × stock holdings; converts the 2023 $000s → $ change</td></tr>
+          <tr><td>3</td><td><code>src/03_universe_and_cusip_map.py</code></td><td>Counts holders per stock; maps CUSIP → ticker with OpenFIGI; picks the largest U.S. common stocks each quarter</td></tr>
+          <tr><td>4</td><td><code>src/04_download_prices.py</code></td><td>Daily adjusted prices and stock splits (Yahoo Finance)</td></tr>
+          <tr><td>5</td><td><code>src/05_build_dataset.py</code></td><td>Crowding measures, formation dates and returns → <code>outputs/final_dataset.csv</code></td></tr>
+          <tr><td>6</td><td><code>src/06_analysis.py</code></td><td>Quintile sorts, Fama–MacBeth and pooled regressions, trading costs</td></tr>
+          <tr><td>7</td><td><code>src/07_hand_checks.py</code></td><td>Recomputes one number per step from the raw files, with independent code</td></tr>
+          <tr><td>8</td><td><code>src/08_export_site_data.py</code></td><td>Packages <code>outputs/</code> into the data file this page reads</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <h2>Crowding measures</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Measure</th><th>Definition</th></tr></thead>
+        <tbody>
+          <tr><td><b>Change in breadth</b> (primary)</td><td>Among managers that filed in both quarters, the change in the share holding the stock, in percentage points (Chen, Hong &amp; Stein 2002). Using only continuing filers removes the effect of new managers entering the data.</td></tr>
+          <tr><td>% change in holders</td><td>Number of 13F holders this quarter ÷ last quarter − 1.</td></tr>
+          <tr><td>Net buyers</td><td>(Buyers − sellers) ÷ (buyers + sellers) among continuing managers, with last quarter's shares adjusted for stock splits.</td></tr>
+          <tr><td>Number of holders</td><td>The level of crowding, rather than the change.</td></tr>
+          <tr><td>Crowding score (0–100)</td><td>Explorer tab only: the average of the stock's within-quarter percentile ranks in number of holders and change in breadth. Descriptive, not a tested signal.</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h3>How many filings each rule removed</h3>
+        <div class="tablewrap" id="tFilings"></div>
+      </div>
+      <div class="card">
+        <h3>CUSIP → ticker mapping</h3>
+        <div class="tablewrap" id="tMapping"></div>
+        <h3 style="margin-top:16px">Forward-return coverage</h3>
+        <div class="tablewrap" id="tCoverage"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Hand checks</h3>
+      <div class="note">Each row is recomputed from the raw files by separate code (<code>src/07_hand_checks.py</code>). The pipeline stops if any row fails.</div>
+      <div class="tablewrap" id="tHand"></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== RESULTS -->
+  <section role="tabpanel" id="p-results" aria-labelledby="t-results">
+    <div class="card">
+      <div class="controls">
+        <label>Crowding measure
+          <select id="selSignal"></select>
+        </label>
+      </div>
+      <div class="grid g2" style="margin-top:12px">
+        <div>
+          <h3>Average next-quarter return minus SPY, by quintile</h3>
+          <div class="chart" id="resQuint"></div>
+        </div>
+        <div>
+          <h3>Most minus least crowded (Q5 − Q1), each quarter</h3>
+          <div class="chart" id="resLS"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>All four measures</h2>
+      <div class="note">Every specification we ran is shown, not just the best one. The primary measure was fixed before the full-sample results.</div>
+      <div class="tablewrap" id="tSummary"></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Does the timing rule matter?</h3>
+        <div class="note">Q5 − Q1 for the primary measure. The look-ahead version starts returns at quarter end, before the filings were public.</div>
+        <div class="chart" id="resLook"></div>
+        <div class="legend"><span><i style="background:var(--series-1)"></i>Filing-date timing (correct)</span><span><i style="background:var(--series-muted)"></i>Quarter-end timing (look-ahead)</span></div>
+      </div>
+      <div class="card">
+        <h3>After trading costs</h3>
+        <div class="tablewrap" id="tMag"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Regressions</h2>
+      <div class="note">All variables are standardized within each quarter, so a coefficient is the next-quarter excess return per one standard deviation. Controls: prior-quarter return, 63-day volatility, log institutional dollar holdings.</div>
+      <div class="grid g2" style="margin-top:8px">
+        <div><h3>Fama–MacBeth</h3><div class="tablewrap" id="tFM"></div></div>
+        <div><h3>Pooled OLS, quarter fixed effects, clustered by stock</h3><div class="tablewrap" id="tOLS"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Specification log</h3>
+      <div class="note">Written automatically by <code>src/06_analysis.py</code> (<code>outputs/tables/specs_run.csv</code>).</div>
+      <div class="tablewrap" id="tSpecs"></div>
+    </div>
+  </section>
+
+  <!-- ===================================================== EXPLORER -->
+  <section role="tabpanel" id="p-explore" aria-labelledby="t-explore">
+    <div class="card">
+      <div class="controls">
+        <label>Ticker
+          <input type="text" id="inTicker" list="tickerList" autocomplete="off" spellcheck="false">
+          <datalist id="tickerList"></datalist>
+        </label>
+        <div class="note" id="tickerName" style="padding-bottom:8px"></div>
+      </div>
+      <div class="grid g2" style="margin-top:12px">
+        <div><h3>Crowding score (0–100)</h3><div class="chart" id="exScore"></div></div>
+        <div><h3>Number of 13F holders</h3><div class="chart" id="exHolders"></div></div>
+      </div>
+      <div class="tablewrap" id="tTicker" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <div class="controls">
+        <label>Quarter
+          <select id="selQuarter"></select>
+        </label>
+        <label>Show
+          <select id="selTopN"><option value="20">Top 20</option><option value="50">Top 50</option><option value="1000">All</option></select>
+        </label>
+      </div>
+      <h3 style="margin-top:12px">Most crowded stocks that quarter</h3>
+      <div class="note" id="topNote"></div>
+      <div class="tablewrap" id="tTop"></div>
+    </div>
+  </section>
+
+  <footer id="foot"></footer>
+</div>
+
+<script src="outputs/site_data.js"></script>
+<script>
+(function () {
+  "use strict";
+  const S = window.SITE_DATA;
+  const $ = (id) => document.getElementById(id);
+  if (!S) {
+    document.querySelector(".wrap").insertAdjacentHTML("beforeend",
+      '<div class="card empty">No data yet. Run <code>python run_all.py</code> to build <code>outputs/site_data.js</code>.</div>');
+    return;
+  }
+
+  // ------------------------------------------------------------ helpers
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const isNum = (x) => typeof x === "number" && isFinite(x);
+  const pct = (x, d = 1) => isNum(x) ? (x * 100).toFixed(d) + "%" : "—";
+  const spct = (x, d = 1) => isNum(x) ? (x >= 0 ? "+" : "−") + Math.abs(x * 100).toFixed(d) + "%" : "—";
+  const num = (x, d = 2) => isNum(x) ? x.toFixed(d) : "—";
+  const snum = (x, d = 2) => isNum(x) ? (x >= 0 ? "+" : "−") + Math.abs(x).toFixed(d) : "—";
+  const int = (x) => isNum(x) ? Math.round(x).toLocaleString("en-US") : "—";
+  const cls = (x) => isNum(x) ? (x >= 0 ? "pos" : "neg") : "";
+  const SIGNAL_NAMES = {
+    dbreadth: "Change in breadth (primary)",
+    pct_chg_holders: "% change in holders",
+    net_buyer_frac: "Net buyers",
+    n_holders: "Number of holders",
+  };
+  const sigName = (s) => SIGNAL_NAMES[s] || s;
+  const VAR_NAMES = { const: "Intercept", ret_past: "Prior-quarter return", vol_63d: "63-day volatility", log_inst_dollar: "Log institutional $" };
+  const varName = (v) => VAR_NAMES[v.replace(/_z$/, "")] || sigName(v.replace(/_z$/, ""));
+  const cssVar = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  // tooltip
+  const tip = $("tip");
+  function showTip(html, ev) {
+    tip.innerHTML = html; tip.style.opacity = 1;
+    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = ev.clientX + pad, y = ev.clientY + pad;
+    if (x + w > window.innerWidth - 8) x = ev.clientX - w - pad;
+    if (y + h > window.innerHeight - 8) y = ev.clientY - h - pad;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  const hideTip = () => { tip.style.opacity = 0; };
+
+  function tableHTML(cols, rows, opts = {}) {
+    const head = cols.map((c, i) => `<th class="${c.num ? "num" : ""}" data-i="${i}">${esc(c.label)}</th>`).join("");
+    const body = rows.map((r) => "<tr>" + cols.map((c) => {
+      const v = c.fmt ? c.fmt(r[c.key], r) : esc(r[c.key]);
+      const k = c.cls ? c.cls(r[c.key], r) : "";
+      return `<td class="${c.num ? "num " : ""}${c.nowrap ? "nowrap " : ""}${k}">${v}</td>`;
+    }).join("") + "</tr>").join("");
+    return `<table class="${opts.sortable ? "sortable" : ""}"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+  }
+
+  // ------------------------------------------------------------ SVG charts
+  const NS = "http://www.w3.org/2000/svg";
+  function el(tag, attrs, parent) {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function niceTicks(lo, hi, n = 5) {
+    const span = hi - lo || 1, raw = span / n, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => span / s <= n) || 10 * mag;
+    const out = [];
+    for (let v = Math.floor(lo / step) * step; v <= hi + 1e-12; v += step) out.push(+v.toFixed(10));
+    return out;
+  }
+  // Rounded data-end bar anchored to the baseline: square at the base, 4px radius at the end.
+  function barPath(x, w, y0, y1) {
+    const r = Math.min(4, w / 2, Math.abs(y1 - y0));
+    if (y1 < y0) { // grows upward
+      return `M${x},${y0} V${y1 + r} Q${x},${y1} ${x + r},${y1} H${x + w - r} Q${x + w},${y1} ${x + w},${y1 + r} V${y0} Z`;
+    }
+    return `M${x},${y0} V${y1 - r} Q${x},${y1} ${x + r},${y1} H${x + w - r} Q${x + w},${y1} ${x + w},${y1 - r} V${y0} Z`;
+  }
+
+  // groups: [{label, values:[{v, color, name}]}]
+  function barChart(container, groups, o = {}) {
+    container.innerHTML = "";
+    const W = 520, H = o.height || 260, m = { t: 22, r: 8, b: 30, l: 48 };
+    const all = groups.flatMap((g) => g.values.map((s) => s.v)).filter(isNum);
+    if (!all.length) { container.innerHTML = '<div class="empty">No data</div>'; return; }
+    let lo = Math.min(0, ...all), hi = Math.max(0, ...all);
+    const padv = (hi - lo) * 0.12 || 0.01; if (hi > 0) hi += padv; if (lo < 0) lo -= padv;
+    const ticks = niceTicks(lo, hi, 5); lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+    const y = (v) => m.t + (hi - v) / (hi - lo) * (H - m.t - m.b);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria || "bar chart" }, container);
+    ticks.forEach((t) => {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: cssVar(t === 0 ? "--axis" : "--grid"), "stroke-width": 1 }, svg);
+      const tx = el("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end" }, svg); tx.textContent = (o.tickFmt || pct)(t, 0);
+    });
+    const bandW = (W - m.l - m.r) / groups.length, k = groups[0].values.length;
+    const barW = Math.min(46, (bandW * 0.62) / k), gap = 2;
+    groups.forEach((g, gi) => {
+      const cx = m.l + bandW * gi + bandW / 2, startX = cx - (k * barW + (k - 1) * gap) / 2;
+      const lab = el("text", { x: cx, y: H - 10, "text-anchor": "middle" }, svg); lab.textContent = g.label;
+      g.values.forEach((s, si) => {
+        if (!isNum(s.v)) return;
+        const x = startX + si * (barW + gap);
+        const color = s.color || cssVar(s.v >= 0 ? "--series-1" : "--series-neg");
+        el("path", { d: barPath(x, barW, y(0), y(s.v)), fill: color }, svg);
+        if (o.labels !== false) {
+          const vl = el("text", { x: x + barW / 2, y: s.v >= 0 ? y(s.v) - 6 : y(s.v) + 14, "text-anchor": "middle", class: "vlabel" }, svg);
+          vl.textContent = (o.fmt || spct)(s.v);
+        }
+        const hit = el("rect", { x: x - 4, y: m.t, width: barW + 8, height: H - m.t - m.b, fill: "transparent" }, svg);
+        hit.addEventListener("mousemove", (ev) => showTip(`<b>${esc(g.label)}${s.name ? " · " + esc(s.name) : ""}</b>${(o.fmt || spct)(s.v, 2)}${s.extra ? "<br>" + s.extra : ""}`, ev));
+        hit.addEventListener("mouseleave", hideTip);
+      });
+    });
+  }
+
+  // points: [{label, v, extra}]
+  function lineChart(container, points, o = {}) {
+    container.innerHTML = "";
+    const W = 520, H = o.height || 230, m = { t: 16, r: 14, b: 30, l: 52 };
+    const vals = points.map((p) => p.v).filter(isNum);
+    if (!vals.length) { container.innerHTML = '<div class="empty">No data</div>'; return; }
+    let lo = o.min ?? Math.min(...vals), hi = o.max ?? Math.max(...vals);
+    if (o.min === undefined) { const p = (hi - lo) * 0.15 || Math.abs(hi) * 0.05 || 1; lo -= p; hi += p; }
+    const ticks = niceTicks(lo, hi, 4); lo = Math.min(lo, ticks[0]); hi = Math.max(hi, ticks[ticks.length - 1]);
+    const n = points.length;
+    const x = (i) => n === 1 ? (m.l + W - m.r) / 2 : m.l + 10 + i * (W - m.l - m.r - 20) / (n - 1);
+    const y = (v) => m.t + (hi - v) / (hi - lo) * (H - m.t - m.b);
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": o.aria || "line chart" }, container);
+    ticks.forEach((t) => {
+      el("line", { x1: m.l, x2: W - m.r, y1: y(t), y2: y(t), stroke: cssVar("--grid"), "stroke-width": 1 }, svg);
+      const tx = el("text", { x: m.l - 8, y: y(t) + 4, "text-anchor": "end" }, svg); tx.textContent = (o.tickFmt || int)(t);
+    });
+    points.forEach((p, i) => { const t = el("text", { x: x(i), y: H - 10, "text-anchor": "middle" }, svg); t.textContent = p.label; });
+    const color = cssVar("--series-1");
+    let d = "", pen = false;
+    points.forEach((p, i) => { if (!isNum(p.v)) { pen = false; return; } d += (pen ? "L" : "M") + x(i) + "," + y(p.v); pen = true; });
+    el("path", { d, fill: "none", stroke: color, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, svg);
+    const cross = el("line", { y1: m.t, y2: H - m.b, stroke: cssVar("--axis"), "stroke-width": 1, opacity: 0 }, svg);
+    const dots = points.map((p, i) => isNum(p.v) ? el("circle", { cx: x(i), cy: y(p.v), r: 4, fill: color, stroke: cssVar("--surface-1"), "stroke-width": 2 }, svg) : null);
+    const hit = el("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" }, svg);
+    hit.addEventListener("mousemove", (ev) => {
+      const r = svg.getBoundingClientRect(), px = (ev.clientX - r.left) * W / r.width;
+      let best = 0; points.forEach((_, i) => { if (Math.abs(x(i) - px) < Math.abs(x(best) - px)) best = i; });
+      const p = points[best];
+      cross.setAttribute("x1", x(best)); cross.setAttribute("x2", x(best)); cross.setAttribute("opacity", 1);
+      dots.forEach((dt, i) => dt && dt.setAttribute("r", i === best ? 6 : 4));
+      showTip(`<b>${esc(p.label)}</b>${(o.fmt || int)(p.v)}${p.extra ? "<br>" + p.extra : ""}`, ev);
+    });
+    hit.addEventListener("mouseleave", () => { hideTip(); cross.setAttribute("opacity", 0); dots.forEach((dt) => dt && dt.setAttribute("r", 4)); });
+  }
+
+  // ------------------------------------------------------------ tabs
+  const tabs = [...document.querySelectorAll('nav.tabs [role="tab"]')];
+  function selectTab(btn) {
+    tabs.forEach((b) => { b.setAttribute("aria-selected", b === btn); $(b.getAttribute("aria-controls")).classList.toggle("active", b === btn); });
+    history.replaceState(null, "", "#" + btn.id.slice(2));
+    renderVisible();
+  }
+  tabs.forEach((b, i) => {
+    b.addEventListener("click", () => selectTab(b));
+    b.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        const n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length]; n.focus(); selectTab(n);
+      }
+    });
+  });
+
+  // ------------------------------------------------------------ data
+  const H = S.headline, P = S.primary_signal;
+  const quarters = [...new Set(S.stocks.map((r) => r.quarter))].sort();
+  const signals = [...new Set(S.quintiles.map((r) => r.signal))];
+  const mag = S.magnitude[0] || {};
+  const look = Object.fromEntries(S.lookahead.map((r) => [r.return_column, r]));
+  const summ = Object.fromEntries(S.long_short_summary.map((r) => [r.signal, r]));
+
+  $("modeBadge").textContent = S.quick_mode ? `v0 sample · top ${S.universe_size}` : `top ${S.universe_size} stocks`;
+
+  // ------------------------------------------------------------ overview
+  const [qa, qb] = H.sample_quarters.split(" to ");
+  const sampleLabel = qa.slice(0, 4) === qb.slice(0, 4) ? `${qa.slice(0, 4)} Q${qa.slice(-1)}–Q${qb.slice(-1)}` : `${qa}–${qb}`;
+  const tiles = [
+    { label: "Sample", value: sampleLabel, foot: `${quarters.length} quarters · top ${S.universe_size} stocks` },
+    { label: "Stock-quarters", value: int(H.n_stock_quarters), foot: `${int(H.n_with_forward_return)} with a forward return` },
+    { label: "Most − least crowded, next quarter", value: spct(H.primary_q5_minus_q1_per_quarter, 2), foot: `t = ${num(H.primary_t_stat)} · return minus SPY, per quarter` },
+    { label: "After trading costs", value: spct(H.primary_net_of_costs_per_quarter, 2), foot: `${S.magnitude[0] ? pct(mag.avg_leg_turnover_per_quarter, 0) : "—"} turnover · ${mag.cost_bps_per_side ?? "—"} bp per side` },
+  ];
+  $("tiles").innerHTML = tiles.map((t) => `<div class="card tile"><div class="label">${esc(t.label)}</div><div class="value">${esc(t.value)}</div><div class="foot">${esc(t.foot)}</div></div>`).join("");
+
+  const ls = H.primary_q5_minus_q1_per_quarter;
+  $("ovTakeaway").innerHTML = `<b>What the data say so far:</b> the most crowded quintile ${ls >= 0 ? "<b>outperformed</b>" : "<b>underperformed</b>"} the least crowded by
+    ${pct(Math.abs(ls), 1)} per quarter (t = ${num(H.primary_t_stat)}), which ${ls >= 0 ? "supports the information story over the herding story" : "supports the herding story"}.`;
+  $("ovCaveat").innerHTML = S.quick_mode
+    ? `<b>Preliminary.</b> This is the v0 run: ${quarters.length} quarters (${esc(H.sample_quarters)}), the ${S.universe_size} largest stocks. A t-statistic from ${quarters.length} quarters is fragile, and 2023 was dominated by the AI rally. The full 2022–2024 sample is the real test.`
+    : `<b>Read with care.</b> ${quarters.length} quarters is still a short sample. See the Methodology tab for the known limits (survivorship in Yahoo returns, ticker mapping, 13F coverage).`;
+
+  // ------------------------------------------------------------ methodology tables
+  function renderMethod() {
+    const fc = S.filing_counts.filter((r) => r.file !== "ALL");
+    const tot = S.filing_counts.find((r) => r.file === "ALL") || {};
+    $("tFilings").innerHTML = tableHTML([
+      { key: "file", label: "SEC file (by filing date)", fmt: (v) => `<code>${esc(v.replace("_form13f.zip", ""))}</code>` },
+      { key: "all_submissions", label: "All filings", num: true, fmt: int },
+      { key: "original_13F_HR", label: "Original 13F-HR", num: true, fmt: int },
+      { key: "late_dropped", label: "Late, dropped", num: true, fmt: int },
+      { key: "kept", label: "Kept", num: true, fmt: int },
+    ], fc) + `<div class="note" style="margin-top:6px">${int(tot.duplicate_originals_dropped)} duplicate originals dropped; ${int(tot.kept)} manager-quarter filings kept in total.</div>`;
+    $("tMapping").innerHTML = tableHTML([{ key: "check", label: "Check" }, { key: "value", label: "Value", num: true, fmt: int }], S.mapping);
+    $("tCoverage").innerHTML = tableHTML([
+      { key: "quarter", label: "Quarter" }, { key: "stocks", label: "Stocks", num: true, fmt: int },
+      { key: "with_fwd_return", label: "With return", num: true, fmt: int },
+      { key: "share_missing_return", label: "Missing", num: true, fmt: (v) => pct(v, 1) },
+    ], S.coverage);
+    $("tHand").innerHTML = tableHTML([
+      { key: "step", label: "Step" }, { key: "check", label: "Check" },
+      { key: "pipeline", label: "Pipeline", num: true, fmt: (v) => num(v, 6) },
+      { key: "by_hand", label: "By hand", num: true, fmt: (v) => num(v, 6) },
+      { key: "match", label: "Match", fmt: (v) => v ? '<span class="ok">✓ match</span>' : '<span class="neg">✗ FAIL</span>' },
+    ], S.hand_checks);
+  }
+
+  // ------------------------------------------------------------ results
+  $("selSignal").innerHTML = signals.map((s) => `<option value="${esc(s)}"${s === P ? " selected" : ""}>${esc(sigName(s))}</option>`).join("");
+  function quintGroups(sig) {
+    return S.quintiles.filter((r) => r.signal === sig).sort((a, b) => a.quintile - b.quintile).map((r) => ({
+      label: r.quintile === 1 ? "Q1 least" : r.quintile === 5 ? "Q5 most" : "Q" + r.quintile,
+      values: [{ v: r.mean_exret_fwd, extra: `t = ${num(r.t_stat)} · ${num(r.avg_stocks, 0)} stocks per quarter` }],
+    }));
+  }
+  function renderResults() {
+    const sig = $("selSignal").value;
+    barChart($("resQuint"), quintGroups(sig), { aria: "Average excess return by quintile" });
+    const byQ = S.long_short_by_quarter.filter((r) => r.signal === sig).sort((a, b) => a.quarter.localeCompare(b.quarter));
+    barChart($("resLS"), byQ.map((r) => ({ label: r.quarter, values: [{ v: r.long_short }] })), { aria: "Q5 minus Q1 by quarter" });
+    $("tSummary").innerHTML = tableHTML([
+      { key: "signal", label: "Measure", fmt: (v) => esc(sigName(v)) },
+      { key: "mean_q5_minus_q1", label: "Q5 − Q1 per quarter", num: true, fmt: (v) => spct(v, 2), cls: cls },
+      { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
+      { key: "share_quarters_positive", label: "Quarters positive", num: true, fmt: (v) => pct(v, 0) },
+      { key: "n_quarters", label: "Quarters", num: true, fmt: int },
+    ], S.long_short_summary);
+    const fm = S.fama_macbeth.filter((r) => r.signal === sig);
+    $("tFM").innerHTML = tableHTML([
+      { key: "variable", label: "Variable", fmt: (v) => esc(varName(v)) },
+      { key: "coef", label: "Coef (per SD)", num: true, fmt: (v) => spct(v, 2) },
+      { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
+    ], fm);
+    const ols = S.pooled_ols.filter((r) => r.signal === sig);
+    $("tOLS").innerHTML = tableHTML([
+      { key: "variable", label: "Variable", fmt: (v) => esc(varName(v)) },
+      { key: "coef", label: "Coef (per SD)", num: true, fmt: (v) => spct(v, 2) },
+      { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
+    ], ols) + (ols[0] ? `<div class="note" style="margin-top:6px">${int(ols[0].n_obs)} observations · R² = ${num(ols[0].r2, 3)}</div>` : "");
+  }
+  function renderResultsStatic() {
+    const lf = look.exret_fwd || {}, ln = look.exret_naive || {};
+    barChart($("resLook"), [{ label: "Q5 − Q1, " + sigName(P).replace(" (primary)", "").toLowerCase(), values: [
+      { v: lf.mean_q5_minus_q1, color: cssVar("--series-1"), name: "filing-date timing", extra: `t = ${num(lf.t_stat)}` },
+      { v: ln.mean_q5_minus_q1, color: cssVar("--series-muted"), name: "quarter-end timing (look-ahead)", extra: `t = ${num(ln.t_stat)}` },
+    ] }], { height: 220, aria: "Look-ahead comparison" });
+    $("tMag").innerHTML = tableHTML([{ key: "k", label: "Item" }, { key: "v", label: "Value", num: true }], [
+      { k: "Gross Q5 − Q1 per quarter", v: spct(mag.gross_q5_minus_q1_per_quarter, 2) },
+      { k: "Share of each leg replaced per quarter", v: pct(mag.avg_leg_turnover_per_quarter, 0) },
+      { k: "Assumed cost per trade", v: `${mag.cost_bps_per_side ?? "—"} bp` },
+      { k: "Cost per quarter", v: pct(mag.cost_per_quarter, 2) },
+      { k: "Net per quarter", v: spct(mag.net_per_quarter, 2) },
+      { k: "Net, annualized (approx.)", v: spct(mag.net_annualized_approx, 1) },
+    ]);
+    $("tSpecs").innerHTML = tableHTML([
+      { key: "method", label: "Method" }, { key: "signal", label: "Measure", fmt: (v) => esc(sigName(v)) },
+      { key: "return", label: "Return", fmt: (v) => v === "exret_naive" ? "quarter-end (look-ahead)" : "filing-date" },
+      { key: "estimate", label: "Estimate", num: true, fmt: (v) => spct(v, 2) },
+      { key: "t_stat", label: "t-stat", num: true, fmt: (v) => num(v) },
+    ], S.specs) + `<div class="note" style="margin-top:6px">${S.specs.length} specifications in total.</div>`;
+  }
+  $("selSignal").addEventListener("change", renderResults);
+
+  // ------------------------------------------------------------ explorer
+  const byTicker = {};
+  S.stocks.forEach((r) => (byTicker[r.ticker] = byTicker[r.ticker] || []).push(r));
+  const tickers = Object.keys(byTicker).sort();
+  $("tickerList").innerHTML = tickers.map((t) => `<option value="${esc(t)}">${esc(byTicker[t][0].issuer)}</option>`).join("");
+  const startTicker = tickers.includes("NVDA") ? "NVDA" : tickers[0];
+  $("inTicker").value = startTicker;
+  $("selQuarter").innerHTML = quarters.slice().reverse().map((q) => `<option>${esc(q)}</option>`).join("");
+
+  const stockCols = (withTicker) => [
+    ...(withTicker ? [{ key: "ticker", label: "Ticker", fmt: (v) => `<a href="#explore" data-t="${esc(v)}">${esc(v)}</a>` }, { key: "issuer", label: "Issuer (13F name)" }] : [{ key: "quarter", label: "Quarter" }]),
+    { key: "crowd_score", label: "Crowd score", num: true, fmt: (v) => num(v, 1) },
+    { key: "n_holders", label: "Holders", num: true, fmt: int },
+    { key: "n_holders_lag", label: "Last qtr", num: true, fmt: int },
+    { key: "dbreadth", label: "Δ breadth (pp)", num: true, fmt: (v) => snum(v, 2) },
+    { key: "net_buyer_frac", label: "Net buyers", num: true, fmt: (v) => snum(v, 2) },
+    ...(withTicker ? [] : [{ key: "formation_date", label: "Formed", nowrap: true }]),
+    { key: "ret_fwd", label: "Next-qtr return", num: true, fmt: (v) => spct(v, 1), cls: cls },
+    { key: "exret_fwd", label: "vs SPY", num: true, fmt: (v) => spct(v, 1), cls: cls },
+  ];
+
+  function renderTicker() {
+    const t = $("inTicker").value.trim().toUpperCase();
+    const rows = (byTicker[t] || []).slice().sort((a, b) => a.quarter.localeCompare(b.quarter));
+    if (!rows.length) {
+      $("tickerName").textContent = t ? `${t} is not in the sample.` : "";
+      ["exScore", "exHolders"].forEach((id) => ($(id).innerHTML = '<div class="empty">Pick a ticker from the list</div>'));
+      $("tTicker").innerHTML = ""; return;
+    }
+    $("tickerName").textContent = rows[0].issuer + ` · in the sample ${rows.length} of ${quarters.length} quarters`;
+    const pts = (key) => quarters.map((q) => { const r = rows.find((x) => x.quarter === q); return { label: q, v: r ? r[key] : null, extra: r ? `Next-qtr vs SPY: ${spct(r.exret_fwd, 1)}` : "" }; });
+    lineChart($("exScore"), pts("crowd_score"), { min: 0, max: 100, fmt: (v) => num(v, 1), tickFmt: (v) => v.toFixed(0), aria: "Crowding score over time" });
+    lineChart($("exHolders"), pts("n_holders"), { aria: "Number of holders over time" });
+    $("tTicker").innerHTML = tableHTML(stockCols(false), rows);
+  }
+  let sortKey = "crowd_score", sortDir = -1;
+  function renderTop() {
+    const q = $("selQuarter").value, n = +$("selTopN").value;
+    const rows = S.stocks.filter((r) => r.quarter === q).sort((a, b) => {
+      const x = a[sortKey], y = b[sortKey];
+      if (typeof x === "string") return sortDir * x.localeCompare(y);
+      return sortDir * ((isNum(x) ? x : -Infinity) - (isNum(y) ? y : -Infinity));
+    }).slice(0, n);
+    const cols = stockCols(true);
+    const r0 = S.stocks.find((r) => r.quarter === q);
+    $("topNote").textContent = r0 ? `Holdings as of ${q} end, public by the filing deadline. Positions formed ${r0.formation_date}, returns measured to ${r0.holding_end_date}. Click a column header to sort.` : "";
+    $("tTop").innerHTML = tableHTML(cols, rows, { sortable: true });
+    $("tTop").querySelectorAll("th").forEach((th) => {
+      const c = cols[+th.dataset.i]; if (c.key === sortKey) th.textContent += sortDir < 0 ? " ↓" : " ↑";
+      th.addEventListener("click", () => { if (sortKey === c.key) sortDir = -sortDir; else { sortKey = c.key; sortDir = typeof rows[0]?.[c.key] === "string" ? 1 : -1; } renderTop(); });
+    });
+    $("tTop").querySelectorAll("a[data-t]").forEach((a) => a.addEventListener("click", (e) => {
+      e.preventDefault(); $("inTicker").value = a.dataset.t; renderTicker(); window.scrollTo({ top: 0, behavior: "smooth" });
+    }));
+  }
+  $("inTicker").addEventListener("input", renderTicker);
+  $("selQuarter").addEventListener("change", renderTop);
+  $("selTopN").addEventListener("change", renderTop);
+
+  // ------------------------------------------------------------ render
+  function renderVisible() {
+    const active = document.querySelector('section[role="tabpanel"].active').id;
+    if (active === "p-overview") barChart($("ovQuint"), quintGroups(P), { aria: "Average excess return by quintile" });
+    if (active === "p-method") renderMethod();
+    if (active === "p-results") { renderResults(); renderResultsStatic(); }
+    if (active === "p-explore") { renderTicker(); renderTop(); }
+  }
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderVisible);
+  $("foot").innerHTML = `Data: SEC Form 13F data sets, OpenFIGI, Yahoo Finance. Built ${esc(S.generated_at_utc.replace("T", " ").replace("Z", " UTC"))} from <code>outputs/</code> by <code>src/08_export_site_data.py</code>.
+    Code and threats to validity: see the repository README.`;
+  const start = tabs.find((b) => "#" + b.id.slice(2) === location.hash);
+  if (start) selectTab(start); else renderVisible();
+})();
+</script>
+</body>
+</html>

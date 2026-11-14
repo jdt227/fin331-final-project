@@ -31,7 +31,9 @@ Every specification we run goes here, **including the ones that didn't work**. `
 | Date | Who | Sample | What we ran / changed | Result (paste from outputs/) | Kept? |
 |---|---|---|---|---|---|
 | 2026-11-11 | | Fake test data | Built the pipeline; ran end to end on synthetic SEC-format data to test the code | Not a result; synthetic data only | n/a |
-| | | 2023 (`CROWD_QUICK=1`) | v0 run | | |
+| 2026-11-14 | Harrison | 2023 (`CROWD_QUICK=1`), top 100 | v0 run, all 13 specs. QCOM was missing (transient Yahoo error) | `dbreadth` Q5 − Q1 +6.07%/qtr, t = 2.13 | Superseded by the next row |
+| 2026-11-14 | Harrison | 2023 (`CROWD_QUICK=1`), top 100 | Same 13 specs after fixing the download retry; QCOM now included. No definitions changed | `dbreadth` Q5 − Q1 +5.98%/qtr, t = 2.42; FM +1.12%/SD, t = 2.67; pooled OLS t = 1.23; look-ahead timing +7.54%. `n_holders` level FM −2.09%/SD, t = −3.94 | Yes (v0 result) |
+| 2026-11-14 | Harrison (skeptical review) | 2023 v0 | Diagnostic only, not new results: (a) drop stocks with no prior-quarter holders; (b) drop NVDA | (a) no change, 0 such stocks; (b) Q5 − Q1 +4.69%/qtr, t = 2.08 | Diagnostic (see audit R4, R6) |
 | | | 2022–2024 | v1 full sample | | |
 
 Rules for this log: add a row *every time* you change a definition, filter or sample and look at results. Never delete rows.

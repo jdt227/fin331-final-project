@@ -1,6 +1,6 @@
 # Crowded Trades: What Happens When the Institutions Pile In?
 
-**Harrison Babuschak · `[teammate]` · `[teammate]` · `[teammate]`**
+**Harrison Babuschak · Brauston Estes · Jacob Thompson · Juliana Vasquez**
 FIN 331 Data Science for Finance · Lehigh University · Fall 2026
 
 ---
@@ -51,13 +51,20 @@ One row is **one stock × one 13F report quarter.** The key `(ticker, quarter)` 
 | `ret_fwd`, `exret_fwd` | Return from formation date to holding end date; same minus SPY |
 | `ret_past`, `vol_63d`, `log_inst_dollar` | Controls: prior-quarter return, 63-day volatility, log institutional dollar holdings |
 
-### Example rows
+### Real rows from the v0 run
 
-> **Note for the team, delete before submitting:** replace this table with the real rows from `outputs/tables/sample_rows.md`. That file is written automatically when you run `CROWD_QUICK=1 python run_all.py`. The row below only shows the format.
+Four stocks in report quarter 2023Q3, copied from `outputs/tables/sample_rows.md`. Holdings are as of 30 Sep 2023, public by the 14 Nov 2023 deadline, and the return runs from 15 Nov 2023 to 15 Feb 2024. Returns are decimals: 0.486 = 48.6%.
 
 | quarter | ticker | n_holders | n_holders_lag | dbreadth | net_buyer_frac | crowd_score | formation_date | ret_fwd | exret_fwd |
 |---|---|---|---|---|---|---|---|---|---|
-| 2023Q3 | *XXXX* | *…* | *…* | *…* | *…* | *…* | 2023-11-15 | *…* | *…* |
+| 2023Q3 | AAPL | 4240 | 4203 | 0.296 | -0.158 | 80.2 | 2023-11-15 | -0.021 | -0.142 |
+| 2023Q3 | NVDA | 3381 | 3258 | 1.56 | 0.055 | 96.0 | 2023-11-15 | 0.486 | 0.365 |
+| 2023Q3 | TSLA | 2675 | 2663 | 0.109 | 0.196 | 65.0 | 2023-11-15 | -0.175 | -0.295 |
+| 2023Q3 | JPM | 3405 | 3355 | 0.53 | 0.001 | 84.7 | 2023-11-15 | 0.209 | 0.088 |
+
+Reading the NVDA row: 3,381 managers held it, up from 3,258. Among managers who filed in both quarters, the share holding NVDA rose 1.56 percentage points, which made it one of the most crowded stocks that quarter (score 96). It then beat SPY by 36.5% over the next quarter.
+
+**v0 sample at a glance (2023, top 100 stocks):** 33,529 on-time original 13F filings kept (about 6,600–6,950 managers per quarter), 1,594 late filings dropped, 400 stock-quarters, and a forward return for all 400.
 
 ### Sample period
 
@@ -104,6 +111,7 @@ Signals for the 12 report quarters **2022Q1–2024Q4**. Holdings from 2021Q4 are
 | 5 | `src/05_build_dataset.py` | Crowding measures, formation dates, forward and control returns. Writes the final dataset |
 | 6 | `src/06_analysis.py` | Sorts, regressions, cost-adjusted magnitudes, figures, specification log |
 | 7 | `src/07_hand_checks.py` | Re-computes one number per step from the raw files with independent code |
+| 8 | `src/08_export_site_data.py` | Packages `outputs/` into the single data file the dashboard reads |
 
 ### Timing: no look-ahead
 
@@ -127,6 +135,26 @@ A 13F describes holdings on the last day of the quarter, but the public sees it 
 
 **Guarding against p-hacking.** `dbreadth` is the pre-registered primary signal. The other three measures are reported in full, not cherry-picked. `06_analysis.py` writes every specification it runs to `outputs/tables/specs_run.csv`, and `specs_tried.md` logs every other change by hand.
 
+## First evidence from v0
+
+The v0 run covers only four quarters (2023, the 100 largest stocks), so these numbers test that the method works. They are not our answer. Source: `outputs/tables/`.
+
+| Crowding quintile (`dbreadth`) | Q1 (least) | Q2 | Q3 | Q4 | Q5 (most) |
+|---|---|---|---|---|---|
+| Avg next-quarter return minus SPY | −2.3% | −1.6% | −1.7% | +0.2% | +3.7% |
+
+| Test | Estimate | t-stat |
+|---|---|---|
+| Q5 − Q1, filing-date timing (correct) | **+5.98% per quarter** | 2.42 |
+| Q5 − Q1, quarter-end timing (look-ahead) | +7.54% per quarter | 2.49 |
+| Fama–MacBeth, per 1 SD of `dbreadth`, with controls | +1.12% per quarter | 2.67 |
+| Pooled OLS, quarter fixed effects, clustered by stock | +1.15% per quarter | 1.23 |
+| Q5 − Q1 after trading costs (64% leg turnover, 10 bp/side) | +5.72% per quarter | |
+
+**What this suggests so far.** In 2023, stocks that more managers moved into *outperformed*. That points toward the informed-buying story and against our pre-stated hypothesis. The look-ahead version overstates the spread by about 1.6 points per quarter, which is exactly the bias our timing rule removes. The *level* of crowding behaves differently: in Fama–MacBeth, stocks with more holders earned lower returns after controlling for size (−2.1% per SD, t = −3.9).
+
+**Why we don't trust it yet.** There are four quarters, and 2023 was dominated by the AI rally: NVDA is in the top crowding quintile. The pooled regression is not significant. The full 2022–2024 run, which includes the 2022 bear market, is the real test.
+
 ## Threats and checks
 
 | How an auditor could break the project | What we do |
@@ -144,16 +172,16 @@ A 13F describes holdings on the last day of the quarter, but the public sees it 
 
 ## Dashboard
 
-The dashboard is a Streamlit app (`app.py`) with four tabs:
+The dashboard is a single self-contained web page (`index.html`), hosted on GitHub Pages at **https://jdt227.github.io/fin331-final-project/**. It uses no external libraries, so it will keep working for years. It reads only `outputs/site_data.js`, which `src/08_export_site_data.py` builds from `outputs/`, so every number on the page traces to a file there. It has four tabs:
 
 - **Overview:** the question and headline numbers
 - **Methodology:** the pipeline and timing rules, plus how many filings each rule removed
 - **Results:** quintile bar chart, long–short table, look-ahead comparison, regressions and costs
 - **Crowding explorer:** pick any ticker to see its crowding score and holder count over time, or pick a quarter to see the most crowded stocks
 
-![Dashboard mockup](images/dashboard_mockup.png)
+![Dashboard, Overview tab](images/dashboard_v0.png)
 
-*Mockup. The layout is final; the values shown are placeholders.*
+*Screenshot of the working dashboard (Overview tab) with the real v0 results. The other tabs hold the methodology, the full results and the crowding explorer.*
 
 ## Timeline
 

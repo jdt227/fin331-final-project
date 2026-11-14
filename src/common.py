@@ -1,5 +1,7 @@
 """Small helpers shared by the pipeline scripts."""
 import hashlib
+import os
+import time
 import zipfile
 from datetime import datetime, timezone
 
@@ -18,6 +20,21 @@ def sha256(path) -> str:
         for block in iter(lambda: f.read(1 << 20), b""):
             h.update(block)
     return h.hexdigest()
+
+
+def safe_write_text(path, text, tries=10):
+    """Write via a temp file, retrying if another program (e.g. OneDrive or Dropbox
+    syncing the folder) briefly locks the file. Windows then raises OSError."""
+    tmp = path.with_name(path.name + ".tmp")
+    for i in range(tries):
+        try:
+            tmp.write_text(text, encoding="utf-8")
+            os.replace(tmp, path)
+            return
+        except OSError:
+            if i == tries - 1:
+                raise
+            time.sleep(1 + i)
 
 
 def log_provenance(name: str, source: str, path, note: str = ""):

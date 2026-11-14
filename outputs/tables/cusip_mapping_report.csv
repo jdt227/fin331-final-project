@@ -1,0 +1,7 @@
+check,value
+candidate CUSIPs,200
+CUSIPs with any OpenFIGI result,189
+CUSIPs mapped to US common stock,154
+universe stock-quarters,400
+universe quarters with < UNIVERSE_SIZE stocks,0
+universe rows where 13F name first word != OpenFIGI name first word,15

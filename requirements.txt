@@ -5,4 +5,3 @@ requests>=2.31
 yfinance>=0.2.54
 statsmodels>=0.14
 matplotlib>=3.8
-streamlit>=1.35

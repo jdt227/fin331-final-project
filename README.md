@@ -6,13 +6,13 @@
 
 | | |
 |---|---|
-| **Dashboard** | `[add Streamlit Cloud link after deploying]` |
-| **Dashboard code** | `app.py` in this repo (`streamlit run app.py`) |
+| **Dashboard** | [https://jdt227.github.io/fin331-final-project/](https://jdt227.github.io/fin331-final-project/) (GitHub Pages) |
+| **Dashboard code** | `index.html`: one self-contained page with no libraries. It reads only `outputs/site_data.js`, which `src/08_export_site_data.py` builds from `outputs/` |
 | **Proposal** | [`PROPOSAL.md`](PROPOSAL.md) |
 | **Checkpoint 1 memo** | [`STATUS.md`](STATUS.md) |
 | **Specifications log** | [`specs_tried.md`](specs_tried.md) and `outputs/tables/specs_run.csv` |
 | **Audits** | [`audits/`](audits/) |
-| **Presentation** | `presentation/` *(added before Dec 1)* |
+| **Presentation** | `presentation/` |
 
 ---
 
@@ -30,13 +30,12 @@ export OPENFIGI_API_KEY="..."   # optional, free at openfigi.com; makes CUSIP ma
 python run_all.py                    # full sample: 2022Q1-2024Q4, 500 largest stocks
 CROWD_QUICK=1 python run_all.py      # v0 small sample: 2023 only, 100 largest stocks
 
-# 4. Dashboard
-streamlit run app.py
+# 4. Dashboard: double-click index.html, or open the GitHub Pages link above
 ```
 
 On Windows PowerShell, set variables first instead: `$env:CROWD_QUICK="1"; python run_all.py`.
 
-`run_all.py` runs the seven scripts in `src/` in order and stops on the first error. Downloads are cached in `data/raw/`, so a second run skips them. Use `python run_all.py --from 5` to re-run only the later steps.
+`run_all.py` runs the eight scripts in `src/` in order and stops on the first error. Downloads are cached in `data/raw/`, so a second run skips them. Use `python run_all.py --from 5` to re-run only the later steps.
 
 **Storage.** The SEC zip files are roughly 50–150 MB each, about 1–2 GB for the full sample. They are git-ignored, and `src/01_download_13f.py` re-creates them. Everything in `outputs/` is small and committed.
 
@@ -47,11 +46,21 @@ CROWD_DATA_DIR=/tmp/crowd_test/data CROWD_OUTPUT_DIR=/tmp/crowd_test/outputs \
 CROWD_UNIVERSE_SIZE=40 CROWD_CANDIDATE_POOL=60 python run_all.py
 ```
 
+## Publishing the dashboard
+
+The dashboard is a static page, so GitHub Pages hosts it for free:
+
+1. Merge your branch into `main` and push.
+2. On GitHub: **Settings → Pages → Build and deployment → Source: Deploy from a branch → `main` / `(root)` → Save.** Only the repo owner or an admin can change this.
+3. After a minute or two, the site is live at the link above. Every push to `main` that changes `index.html` or `outputs/` updates it.
+
+To preview locally, double-click `index.html`. It works without a web server.
+
 ## Repository map
 
 ```
 run_all.py                       one command rebuilds every table and figure
-app.py                           Streamlit dashboard (reads only outputs/)
+index.html                       the dashboard (GitHub Pages); reads outputs/site_data.js
 src/
   config.py                      every setting: sample, timing rules, file list
   common.py                      small shared helpers
@@ -62,11 +71,12 @@ src/
   05_build_dataset.py            crowding measures + forward returns -> outputs/final_dataset.csv
   06_analysis.py                 sorts, Fama-MacBeth, pooled OLS, costs, figures
   07_hand_checks.py              independent re-computation of one number per step
+  08_export_site_data.py         packages outputs/ into outputs/site_data.js for index.html
 tests/make_fake_raw.py           offline test data in the real formats
 data/raw/                        raw inputs (+ provenance.csv: source and pull time of each)
 data/interim/                    parsed intermediate files (git-ignored)
 outputs/                         final dataset, tables/, figures/ (every number shown comes from here)
-images/                          dashboard mockup
+images/                          dashboard screenshot
 audits/                          self-audits and responses to instructor audits
 ```
 
@@ -100,7 +110,7 @@ What we already know could be wrong, and what we do about it:
 
 ## Team
 
-Harrison Babuschak, `[teammate]`, `[teammate]`, `[teammate]`. FIN 331 Data Science for Finance, Lehigh University, Fall 2026.
+Harrison Babuschak, Brauston Estes, Jacob Thompson, Juliana Vasquez.
 
 ## References
 

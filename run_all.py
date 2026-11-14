@@ -22,10 +22,11 @@ STEPS = [
     "05_build_dataset.py",
     "06_analysis.py",
     "07_hand_checks.py",
+    "08_export_site_data.py",
 ]
 
 ap = argparse.ArgumentParser()
-ap.add_argument("--from", dest="start", type=int, default=1, help="first step to run (1-7)")
+ap.add_argument("--from", dest="start", type=int, default=1, help="first step to run (1-8)")
 args = ap.parse_args()
 
 src = Path(__file__).resolve().parent / "src"

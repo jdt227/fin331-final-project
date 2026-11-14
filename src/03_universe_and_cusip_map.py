@@ -25,7 +25,7 @@ import requests
 
 sys.path.insert(0, os.path.dirname(__file__))
 import config
-from common import log_provenance, utc_now, yf_ticker, qstr
+from common import log_provenance, safe_write_text, utc_now, yf_ticker, qstr
 
 config.ensure_dirs()
 
@@ -56,7 +56,7 @@ cusips = sorted(cand["cusip"].unique())
 print(f"{len(cusips):,} candidate CUSIPs to map")
 
 # ---------------------------------------------------------------- 3. OpenFIGI mapping
-cache = json.loads(config.FIGI_CACHE.read_text()) if config.FIGI_CACHE.exists() else {}
+cache = json.loads(config.FIGI_CACHE.read_text(encoding="utf-8")) if config.FIGI_CACHE.exists() else {}
 todo = [c for c in cusips if c not in cache]
 if todo:
     key = os.environ.get("OPENFIGI_API_KEY")
@@ -79,7 +79,8 @@ if todo:
         for c, res in zip(chunk, r.json()):
             cache[c] = {"pulled_at_utc": utc_now(), "data": res.get("data", []),
                         "error": res.get("error") or res.get("warning")}
-        config.FIGI_CACHE.write_text(json.dumps(cache))
+        if (i // batch) % 10 == 9 or i + batch >= len(todo):   # save every 10 batches
+            safe_write_text(config.FIGI_CACHE, json.dumps(cache))
         time.sleep(pause)
     log_provenance("openfigi_cache.json", "https://api.openfigi.com/v3/mapping (ID_CUSIP)",
                    config.FIGI_CACHE, note=f"{len(cache)} CUSIPs cached")
