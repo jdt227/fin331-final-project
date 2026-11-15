@@ -69,7 +69,7 @@ Ranked by severity. **Real?** = we confirmed it in the code or the v0 data.
 | R11 | Also report returns relative to the equal-weighted universe | v1 |
 | Size ranking | Misreported share counts (as with BRK-A) can inflate a high-priced stock's 13F dollar holdings and its size rank. Cap each stock's 13F shares at its shares outstanding, or rank by market cap from another source | v1 |
 | CUSIP changes | Link old → new CUSIPs (Linde 2023) so the change measures carry across corporate actions instead of being left empty | v1 |
-| Coverage | Holder counts include every 13F manager, not just hedge funds; the size control is 13F institutional dollars, not market cap | Stretch: hedge-fund subset |
+| Coverage | Holder counts include every 13F manager, not just hedge funds; the size control is 13F institutional dollars, not market cap | Stretch: hedge-fund subset | Our priorities for Checkpoint 3 are to improve the accuracy of our stock universe, address missing historical returns where possible, and test whether our results are overly influenced by individual stocks. We will document any limitations we cannot fully resolve and explain how they could affect our conclusions.
 
 ---
 
@@ -77,7 +77,7 @@ Ranked by severity. **Real?** = we confirmed it in the code or the v0 data.
 
 | # | Check | Status | One line |
 |---|---|---|---|
-| 1 | It reproduces | **OK** | `python run_all.py` rebuilds everything from raw inputs; cached OpenFIGI and Yahoo answers are committed; the 12-quarter offline test passes end to end |
+| 1 | It reproduces | **OK for v0** | `python run_all.py` rebuilds the results using the 2023 sample, and the necessary cached data is committed. The complete 2022–2024 sample still needs to be rerun and verified for Checkpoint 3 on November 21. |
 | 2 | Every input has a provenance | **OK** | `data/raw/provenance.csv` (URL, UTC pull time, bytes, SHA-256), `prices_requests.csv` (window per ticker), and a reason and source on every row of `manual_ticker_map.csv` |
 | 3 | The unit of observation is right | **OK** | Stock × quarter; `(ticker, quarter)`, `(cusip, quarter)` and one-issuer-per-quarter asserted; every merge uses `validate=` |
 | 4 | No look-ahead | **OK** | Returns start the first trading day after the business-day deadline (asserted); late filings and amendments dropped; universe no longer limited to today's survivors |
@@ -86,7 +86,7 @@ Ranked by severity. **Real?** = we confirmed it in the code or the v0 data.
 | 7 | Magnitudes, not just stars | **OK** | `magnitude.csv`: +5.18% gross per quarter, 62% leg turnover, 0.25% cost, +4.93% net |
 | 8 | Checks by hand | **OK** | 4 of 4 match: AAPL 2023Q3 holders 4,240 from the raw zips; return −2.08%; formation 15 Nov 2023; that quarter's Q5 − Q1 9.28% |
 | 9 | Honest limits | **OK** | README lists 12 threats; p-values with df everywhere; returns survivorship disclosed and measured |
-| 10 | We understand it | **not yet** | Scripts assigned below; walk-throughs before Nov 21 |
+| 10 | We understand it | **not yet** | **In progress.** Each team member has been assigned specific scripts to review and explain before Checkpoint 3 on November 21. We will go through the code together to make sure everyone understands the data collection, methodology, statistical analysis, and dashboard.
 
 ### Who explains what (check 10)
 
