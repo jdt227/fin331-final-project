@@ -125,6 +125,40 @@ def main():
     print("Loading daily returns for CAR computation...")
     daily = pd.read_parquet(DAILY_RETURNS)
     daily["date"] = pd.to_datetime(daily["date"])
+
+    # Download missing tickers (real IBES data has more tickers than fake run)
+    have    = set(daily["ticker"].unique())
+    need    = set(df["ticker"].unique()) | {"SPY"}
+    missing = need - have
+    if missing:
+        print(f"  Downloading daily returns for {len(missing):,} missing tickers...")
+        import yfinance as yf, time as _time
+        from config import START_YEAR, END_YEAR
+        start = f"{START_YEAR - 1}-10-01"
+        end   = f"{END_YEAR + 1}-03-31"
+        new_rows = []
+        for tkr in sorted(missing):
+            try:
+                raw = yf.download(tkr, start=start, end=end,
+                                  auto_adjust=True, progress=False)
+                if raw.empty:
+                    continue
+                close = raw[["Close"]].copy()
+                close.columns = [tkr]
+                pct = close.pct_change().iloc[1:].reset_index()
+                pct = pct.melt(id_vars="Date", var_name="ticker", value_name="ret")
+                pct = pct.rename(columns={"Date": "date"}).dropna(subset=["ret"])
+                pct["date"] = pd.to_datetime(pct["date"])
+                new_rows.append(pct)
+            except Exception:
+                pass
+            _time.sleep(0.3)
+        if new_rows:
+            new_daily = pd.concat(new_rows, ignore_index=True)
+            daily = pd.concat([daily, new_daily], ignore_index=True)
+            daily.to_parquet(DAILY_RETURNS, index=False)
+            print(f"  Added {len(new_daily):,} rows; total {len(daily):,}")
+
     daily_wide = daily.pivot_table(index="date", columns="ticker",
                                    values="ret", aggfunc="first")
     daily_wide = daily_wide.sort_index()
