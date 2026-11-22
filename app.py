@@ -32,15 +32,19 @@ def load_data():
     qret_path = OUTPUTS / "quintile_returns.csv"
     tt_path   = OUTPUTS / "two_by_two.csv"
     reg_path  = OUTPUTS / "regression_results.csv"
+    fi_path   = OUTPUTS / "feature_importance.csv"
+    ml_path   = OUTPUTS / "ml_summary.csv"
 
     df    = pd.read_parquet(ds_path)       if ds_path.exists()   else None
     qret  = pd.read_csv(qret_path)         if qret_path.exists() else None
     tt    = pd.read_csv(tt_path)           if tt_path.exists()   else None
     reg   = pd.read_csv(reg_path)          if reg_path.exists()  else None
-    return df, qret, tt, reg
+    fi    = pd.read_csv(fi_path)           if fi_path.exists()   else None
+    ml    = pd.read_csv(ml_path)           if ml_path.exists()   else None
+    return df, qret, tt, reg, fi, ml
 
 
-df, qret, tt, reg = load_data()
+df, qret, tt, reg, fi, ml_summary = load_data()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 
@@ -84,10 +88,10 @@ by buying the same stocks — creating **crowded trades**. We test whether:
         car_cov = df["car_event"].notna().mean() if "car_event" in df.columns else 0
         c4.metric("CAR Coverage", f"{car_cov:.0%}")
 
-        st.info(
-            "**Checkpoint note:** IBES consensus and crowding data are "
-            "synthetic placeholders for Checkpoint 2. Statistical results "
-            "will update when real WRDS data are loaded."
+        crowding_cov = df["crowding_rank"].notna().mean() if "crowding_rank" in df.columns else 0
+        st.success(
+            f"**Full sample run** — real WRDS IBES consensus and EDGAR 13F crowding data. "
+            f"Crowding coverage: {crowding_cov:.0%} of rows."
         )
     else:
         st.warning("Run the pipeline first:\n\n```bash\npython run_all.py\n```")
@@ -214,9 +218,39 @@ Low crowding + High revision = best outcome (genuine underappreciated upgrade).
                 use_container_width=True,
             )
             st.caption(
-                "HC3 robust standard errors. Quarter fixed effects included but not shown. "
-                "N is small (checkpoint data) — results are illustrative."
+                "HC3 robust standard errors. Quarter fixed effects included but not shown."
             )
+
+        st.divider()
+
+        # ML model
+        st.subheader("ML Model: Random Forest Feature Importances")
+        col_ml1, col_ml2 = st.columns([1, 1])
+
+        fi_fig = FIGURES / "feature_importance.png"
+        if fi_fig.exists():
+            col_ml1.image(str(fi_fig))
+
+        with col_ml2:
+            if ml_summary is not None:
+                row = ml_summary.iloc[0]
+                st.metric("OOS R²", f"{row['oos_r2']:.4f}")
+                st.metric("OOS MAE", f"{row['oos_mae']:.4f}")
+                st.metric("Directional Accuracy", f"{row['directional_accuracy']:.1%}")
+                st.caption(
+                    f"Random Forest Regressor, 5-fold walk-forward CV. "
+                    f"Target: CAR[−1,+1]. "
+                    f"N = {int(row['n_obs'])} obs, {int(row['n_tickers'])} tickers. "
+                    f"eps_surprise dominates; crowding_rank is second most important feature."
+                )
+            if fi is not None:
+                st.dataframe(fi.style.format({"importance": "{:.4f}"}),
+                             use_container_width=True)
+
+        actual_pred_fig = FIGURES / "ml_actual_vs_pred.png"
+        if actual_pred_fig.exists():
+            st.image(str(actual_pred_fig), width=400,
+                     caption="OOS actual vs predicted CAR[-1,+1]")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Tab 4 — Interactive Exploration

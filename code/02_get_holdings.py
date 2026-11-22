@@ -29,7 +29,7 @@ INFOTABLE_NAMES = [
     "primary_doc.xml",
 ]
 
-NS = "http://www.sec.gov/edgar/document/thirteenf/informationTable"
+NS = "http://www.sec.gov/edgar/document/thirteenf/informationtable"
 
 
 def accession_folder(cik: str, accession_no: str) -> str:
@@ -48,24 +48,29 @@ def fetch_infotable_xml(cik: str, accession_no: str) -> str | None:
         url = f"{base}/{name}"
         try:
             r = requests.get(url, headers=EDGAR_HEADERS, timeout=20)
-            if r.status_code == 200 and "<informationTable" in r.text.lower():
+            if r.status_code == 200 and "informationtable" in r.text.lower():
                 return r.text
         except requests.RequestException:
             pass
         time.sleep(REQUEST_DELAY)
 
-    # Fall back: fetch the filing index JSON to find the actual filename
-    idx_url = f"{base}-index.json"
+    # Fall back: fetch the directory listing HTML and find any XML that looks like holdings
+    import re as _re
     try:
-        r = requests.get(idx_url, headers=EDGAR_HEADERS, timeout=20)
+        r = requests.get(f"{base}/", headers=EDGAR_HEADERS, timeout=20)
         if r.status_code == 200:
-            items = r.json().get("directory", {}).get("item", [])
-            for item in items:
-                name = item.get("name", "")
-                if name.lower().endswith(".xml") and "table" in name.lower():
-                    r2 = requests.get(f"{base}/{name}", headers=EDGAR_HEADERS, timeout=20)
-                    if r2.status_code == 200:
-                        return r2.text
+            xml_links = _re.findall(
+                r'href="(/Archives/edgar/data/[^"]+\.xml)"', r.text
+            )
+            for path in xml_links:
+                fname = path.split("/")[-1].lower()
+                if fname in ("primary_doc.xml",):
+                    continue  # skip cover sheet
+                url = f"https://www.sec.gov{path}"
+                r2 = requests.get(url, headers=EDGAR_HEADERS, timeout=20)
+                if r2.status_code == 200 and "informationtable" in r2.text.lower():
+                    return r2.text
+                time.sleep(REQUEST_DELAY)
     except Exception:
         pass
 

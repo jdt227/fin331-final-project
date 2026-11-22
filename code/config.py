@@ -37,7 +37,7 @@ for d in [INDEX_DIR, HOLDINGS_DIR, RETURNS_DIR, IBES_DIR, OUTPUTS, FIGURES]:
 
 # ── SEC EDGAR ──────────────────────────────────────────────────────────────────
 # The SEC requires a descriptive User-Agent. Update this with your team info.
-EDGAR_HEADERS  = {"User-Agent": "FIN331 Research Project fin331team@university.edu"}
+EDGAR_HEADERS  = {"User-Agent": "FIN331 Research Project bce229@lehigh.edu"}
 REQUEST_DELAY  = 0.12   # seconds between EDGAR requests (stay under 10/sec)
 
 QUARTERS = [(y, q) for y in range(START_YEAR, END_YEAR + 1) for q in range(1, 5)]

@@ -44,6 +44,11 @@ def load_crowding() -> pd.DataFrame:
         cusip_map = pd.read_parquet(CUSIP_MAP)
         df = crowding.merge(cusip_map, on="cusip", how="inner")
         df["period_end"] = pd.to_datetime(df["period_end"])
+        # Multiple CUSIPs may map to same ticker (share classes) — aggregate
+        df = (
+            df.groupby(["ticker", "period_end"], as_index=False)
+            .agg(n_filers=("n_filers", "sum"), chg_filers=("chg_filers", "sum"))
+        )
         return df[["ticker", "period_end", "n_filers", "chg_filers"]].copy()
     else:
         # Checkpoint fake crowding — same tickers as IBES fake data
