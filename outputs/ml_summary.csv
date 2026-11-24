@@ -1,2 +1,2 @@
 model,features,target,cv_scheme,oos_r2,oos_mae,directional_accuracy,n_obs,n_tickers
-RandomForestRegressor,"crowding_rank, eps_revision, revision_streak, dispersion, eps_surprise",car_event,TimeSeriesSplit(n_splits=5),0.0034,0.0448,0.5794,586,143
+RandomForestRegressor,"crowding_rank, eps_revision, revision_streak, dispersion, eps_surprise, eps_expected_growth, eps_yoy_growth",car_event,TimeSeriesSplit(n_splits=5),-0.0109,0.0443,0.5031,386,135

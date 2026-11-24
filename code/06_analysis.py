@@ -1,18 +1,21 @@
 """
-Step 8: Analysis — four empirical tests of the estimate-crowding hypothesis.
+Step 8: Analysis — empirical tests of the estimate-crowding hypothesis.
 
-1. Channel test  — does eps_revision predict crowding_rank?
+1. Channel test  — does eps_expected_growth predict crowding_rank?
 2. Fragility sort — car_event and car_drift by crowding quintile
-3. 2×2 table     — high/low crowding × high/low eps_revision → mean car_event
-4. Regression    — car_event ~ crowding_rank * eps_surprise + revision_streak + dispersion
+3. 2×2 table     — high/low crowding × high/low eps_expected_growth → mean car_event
+4. Regression    — car_event ~ crowding_rank * eps_surprise + eps_expected_growth + controls
+5. Growth sort   — car_event by eps_expected_growth quintile
 
 Outputs (all in outputs/):
   quintile_returns.csv           — mean CAR by crowding quintile
-  two_by_two.csv                 — 2×2 crowding × revision table
+  growth_quintile_returns.csv    — mean CAR by eps_expected_growth quintile
+  two_by_two.csv                 — 2×2 crowding × expected growth table
   regression_results.csv         — OLS coefficient table
   figures/quintile_car.png
   figures/two_by_two_heatmap.png
-  figures/revision_vs_crowding.png
+  figures/expected_growth_vs_crowding.png
+  figures/growth_quintile_car.png
   figures/crowding_ts.png
   figures/drift_by_quintile.png
 """
@@ -59,7 +62,8 @@ def main():
     df["calendar_qtr_end"] = pd.to_datetime(df["calendar_qtr_end"])
 
     # Winsorize continuous outcomes to reduce outlier influence
-    for col in ["car_event", "car_drift", "eps_revision", "dispersion"]:
+    for col in ["car_event", "car_drift", "eps_revision", "dispersion",
+                "eps_expected_growth", "eps_yoy_growth"]:
         if col in df.columns:
             df[col] = winsorize(df[col].astype(float))
 
@@ -73,17 +77,29 @@ def main():
     )
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Analysis 1: Channel test — does revision predict crowding?
+    # Analysis 1: Channel test — does expected growth predict crowding?
     # ─────────────────────────────────────────────────────────────────────────
-    ch_df = df.dropna(subset=["crowding_rank", "eps_revision"])
+    ch_df = df.dropna(subset=["crowding_rank", "eps_expected_growth"])
     ch_model = smf.ols(
-        "crowding_rank ~ eps_revision + revision_streak + dispersion",
+        "crowding_rank ~ eps_expected_growth + eps_yoy_growth + dispersion",
         data=ch_df,
     ).fit(cov_type="HC3")
-    print("\n--- Channel test: eps_revision → crowding_rank ---")
+    print("\n--- Channel test: eps_expected_growth → crowding_rank ---")
     tbl = ch_model.summary2().tables[1]
     cols = [c for c in ["Coef.", "Std.Err.", "t", "P>|t|"] if c in tbl.columns]
     print(tbl[cols].to_string())
+
+    # Save channel test results
+    channel_rows = []
+    for term in ["eps_expected_growth", "eps_yoy_growth", "dispersion"]:
+        if term in ch_model.params.index:
+            channel_rows.append({
+                "term": term,
+                "coef": ch_model.params[term],
+                "se":   ch_model.bse[term],
+                "pval": ch_model.pvalues[term],
+            })
+    pd.DataFrame(channel_rows).to_csv(OUTPUTS / "channel_test.csv", index=False)
 
     # ─────────────────────────────────────────────────────────────────────────
     # Analysis 2: Fragility sort — car by crowding quintile
@@ -104,41 +120,46 @@ def main():
     print(qret.to_string(index=False))
 
     # ─────────────────────────────────────────────────────────────────────────
-    # Analysis 3: 2×2 table — crowding × revision → car_event
+    # Analysis 3: 2×2 table — crowding × expected growth → car_event
     # ─────────────────────────────────────────────────────────────────────────
-    tt_df = df.dropna(subset=["crowding_rank", "eps_revision", "car_event"]).copy()
-    tt_df["crowding_hi"] = (tt_df["crowding_rank"] >= tt_df["crowding_rank"].median()).astype(int)
-    tt_df["revision_hi"] = (tt_df["eps_revision"]  >= tt_df["eps_revision"].median()).astype(int)
+    tt_df = df.dropna(subset=["crowding_rank", "eps_expected_growth", "car_event"]).copy()
+    tt_df["crowding_hi"]  = (tt_df["crowding_rank"]       >= tt_df["crowding_rank"].median()).astype(int)
+    tt_df["eg_hi"]        = (tt_df["eps_expected_growth"]  >= tt_df["eps_expected_growth"].median()).astype(int)
 
     two_by_two = (
-        tt_df.groupby(["crowding_hi", "revision_hi"])
+        tt_df.groupby(["crowding_hi", "eg_hi"])
         .agg(mean_car_event=("car_event", "mean"), n_obs=("car_event", "count"))
         .reset_index()
+        .rename(columns={"eg_hi": "expected_growth_hi"})
     )
     two_by_two.to_csv(OUTPUTS / "two_by_two.csv", index=False)
-    print("\n--- 2×2 table: crowding × revision ---")
+    print("\n--- 2×2 table: crowding × expected growth ---")
     print(two_by_two.to_string(index=False))
 
     # ─────────────────────────────────────────────────────────────────────────
     # Analysis 4: OLS regression — car_event ~ crowding × surprise + controls
     # ─────────────────────────────────────────────────────────────────────────
     reg_df = df.dropna(subset=["crowding_rank", "eps_surprise", "car_event",
-                                "revision_streak", "dispersion"]).copy()
+                                "revision_streak", "dispersion",
+                                "eps_expected_growth"]).copy()
     reg_df["qtr_fe"] = reg_df["fpedats"].dt.to_period("Q").astype(str)
 
     m1 = smf.ols(
-        "car_event ~ crowding_rank + eps_surprise + revision_streak + dispersion + C(qtr_fe)",
+        "car_event ~ crowding_rank + eps_surprise + eps_expected_growth"
+        " + revision_streak + dispersion + C(qtr_fe)",
         data=reg_df,
     ).fit(cov_type="HC3")
 
     m2 = smf.ols(
-        "car_event ~ crowding_rank * eps_surprise + revision_streak + dispersion + C(qtr_fe)",
+        "car_event ~ crowding_rank * eps_expected_growth + eps_surprise"
+        " + revision_streak + dispersion + C(qtr_fe)",
         data=reg_df,
     ).fit(cov_type="HC3")
 
     def extract_coefs(result, model_name):
-        keep = ["crowding_rank", "eps_surprise", "revision_streak",
-                "dispersion", "crowding_rank:eps_surprise"]
+        keep = ["crowding_rank", "eps_surprise", "eps_expected_growth",
+                "revision_streak", "dispersion",
+                "crowding_rank:eps_expected_growth"]
         rows = []
         for term in keep:
             if term in result.params.index:
@@ -156,6 +177,27 @@ def main():
     reg_out.to_csv(OUTPUTS / "regression_results.csv", index=False)
     print("\n--- Regression results ---")
     print(reg_out.to_string(index=False))
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Analysis 5: Growth sort — car_event by eps_expected_growth quintile
+    # ─────────────────────────────────────────────────────────────────────────
+    gdf = df.dropna(subset=["eps_expected_growth", "car_event"]).copy()
+    gdf["growth_q"] = gdf.groupby("fpedats")["eps_expected_growth"].transform(
+        lambda x: quintile_label(x, q=min(5, x.notna().sum()))
+    )
+    growth_sort = (
+        gdf.dropna(subset=["growth_q"])
+        .groupby("growth_q")
+        .agg(
+            mean_car_event=("car_event", "mean"),
+            mean_car_drift=("car_drift",  "mean"),
+            n_obs         =("car_event", "count"),
+        )
+        .reset_index()
+    )
+    growth_sort.to_csv(OUTPUTS / "growth_quintile_returns.csv", index=False)
+    print("\n--- Growth sort: CAR by eps_expected_growth quintile ---")
+    print(growth_sort.to_string(index=False))
 
     # ─────────────────────────────────────────────────────────────────────────
     # Figures
@@ -182,28 +224,46 @@ def main():
     plt.close()
 
     # Figure 2: 2×2 heatmap
-    pivot = two_by_two.pivot(index="crowding_hi", columns="revision_hi",
+    pivot = two_by_two.pivot(index="crowding_hi", columns="expected_growth_hi",
                              values="mean_car_event") * 100
     pivot.index   = ["Low Crowding", "High Crowding"]
-    pivot.columns = ["Low Revision", "High Revision"]
+    pivot.columns = ["Low Exp. Growth", "High Exp. Growth"]
     fig, ax = plt.subplots(figsize=(6, 4))
     sns.heatmap(pivot, annot=True, fmt=".2f", cmap="RdYlGn",
                 center=0, ax=ax, linewidths=0.5)
-    ax.set_title("Mean CAR[-1,+1] (%) by Crowding and Estimate Revision")
+    ax.set_title("Mean CAR[-1,+1] (%) by Crowding and Expected EPS Growth")
     plt.tight_layout()
     fig.savefig(FIGURES / "two_by_two_heatmap.png", dpi=150, bbox_inches="tight")
     plt.close()
 
-    # Figure 3: Scatter — eps_revision vs crowding_rank
-    scat_df = df.dropna(subset=["eps_revision", "crowding_rank"])
+    # Figure 3: Scatter — eps_expected_growth vs crowding_rank
+    scat_df = df.dropna(subset=["eps_expected_growth", "crowding_rank"])
     fig, ax = plt.subplots(figsize=(7, 5))
-    ax.scatter(scat_df["eps_revision"], scat_df["crowding_rank"],
+    ax.scatter(scat_df["eps_expected_growth"], scat_df["crowding_rank"],
                alpha=0.4, s=15, color="#3498db")
-    # Trend line
     if len(scat_df) > 10:
-        z = np.polyfit(scat_df["eps_revision"], scat_df["crowding_rank"], 1)
+        z = np.polyfit(scat_df["eps_expected_growth"], scat_df["crowding_rank"], 1)
         p = np.poly1d(z)
-        xs = np.linspace(scat_df["eps_revision"].min(), scat_df["eps_revision"].max(), 100)
+        xs = np.linspace(scat_df["eps_expected_growth"].min(),
+                         scat_df["eps_expected_growth"].max(), 100)
+        ax.plot(xs, p(xs), "r--", linewidth=1.5, label="OLS fit")
+        ax.legend()
+    ax.set_xlabel("Expected EPS Growth (consensus vs prior quarter actual, winsorized)")
+    ax.set_ylabel("Crowding Rank (percentile)")
+    ax.set_title("Expected EPS Jump vs. Institutional Crowding")
+    plt.tight_layout()
+    fig.savefig(FIGURES / "expected_growth_vs_crowding.png", dpi=150, bbox_inches="tight")
+    plt.close()
+
+    # Also keep legacy scatter for revision
+    scat_rev = df.dropna(subset=["eps_revision", "crowding_rank"])
+    fig, ax = plt.subplots(figsize=(7, 5))
+    ax.scatter(scat_rev["eps_revision"], scat_rev["crowding_rank"],
+               alpha=0.4, s=15, color="#9b59b6")
+    if len(scat_rev) > 10:
+        z = np.polyfit(scat_rev["eps_revision"], scat_rev["crowding_rank"], 1)
+        p = np.poly1d(z)
+        xs = np.linspace(scat_rev["eps_revision"].min(), scat_rev["eps_revision"].max(), 100)
         ax.plot(xs, p(xs), "r--", linewidth=1.5, label="OLS fit")
         ax.legend()
     ax.set_xlabel("EPS Revision (winsorized)")
@@ -254,6 +314,29 @@ def main():
     ax.bar_label(bars, fmt="%.2f%%", padding=3, fontsize=9)
     plt.tight_layout()
     fig.savefig(FIGURES / "drift_by_quintile.png", dpi=150, bbox_inches="tight")
+    plt.close()
+
+    # Figure 6: CAR by eps_expected_growth quintile
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    for ax, col, title in [
+        (axes[0], "mean_car_event", "CAR[-1,+1] by Expected EPS Growth Quintile"),
+        (axes[1], "mean_car_drift", "CAR[+2,+60] by Expected EPS Growth Quintile"),
+    ]:
+        vals   = growth_sort[col] * 100
+        colors = ["#2ecc71" if v > 0 else "#e74c3c" for v in vals]
+        bars   = ax.bar(growth_sort["growth_q"].astype(str), vals,
+                        color=colors, edgecolor="white", linewidth=0.8)
+        ax.axhline(0, color="black", linewidth=0.8, linestyle="--")
+        ax.set_xlabel("Quintile (1 = smallest expected jump, 5 = largest)")
+        ax.set_ylabel("Avg CAR (%)")
+        ax.set_title(title)
+        ax.bar_label(bars, fmt="%.2f%%", padding=3, fontsize=9)
+    fig.suptitle(
+        "Do Stocks With Bigger Expected EPS Jumps Have Worse Earnings Returns?",
+        fontsize=12,
+    )
+    plt.tight_layout()
+    fig.savefig(FIGURES / "growth_quintile_car.png", dpi=150, bbox_inches="tight")
     plt.close()
 
     print(f"\nAll outputs saved to {OUTPUTS}")

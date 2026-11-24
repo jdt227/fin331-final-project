@@ -31,7 +31,8 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import INPUTS, OUTPUTS, FIGURES
 
 FEATURES = ["crowding_rank", "eps_revision", "revision_streak",
-            "dispersion", "eps_surprise"]
+            "dispersion", "eps_surprise",
+            "eps_expected_growth", "eps_yoy_growth"]
 TARGET   = "car_event"
 RANDOM_STATE = 42
 

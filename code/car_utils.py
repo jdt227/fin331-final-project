@@ -3,7 +3,8 @@ Shared utilities for the estimate-crowding pipeline.
 
   align_fiscal_to_calendar(fpedats) → calendar quarter end
   compute_car(ticker, event_date, after_close, daily_wide, pre, post, start_offset) → float | None
-  build_features(ibes_df) → ibes_df with eps_revision, revision_streak, dispersion, eps_surprise
+  build_features(ibes_df) → ibes_df with eps_revision, revision_streak, dispersion,
+                             eps_surprise, eps_expected_growth, eps_yoy_growth
 """
 import pandas as pd
 import numpy as np
@@ -102,7 +103,8 @@ def compute_car(
 
 def build_features(ibes: pd.DataFrame) -> pd.DataFrame:
     """
-    Add eps_revision, revision_streak, dispersion, eps_surprise to IBES DataFrame.
+    Add eps_revision, revision_streak, dispersion, eps_surprise,
+    eps_expected_growth, eps_yoy_growth to IBES DataFrame.
 
     Rules (per spec):
     - eps_revision = (eps_consensus_t - eps_consensus_tm1) / |eps_consensus_tm1|
@@ -110,6 +112,10 @@ def build_features(ibes: pd.DataFrame) -> pd.DataFrame:
     - revision_streak = consecutive quarters with eps_revision > 0.01 (1% threshold)
     - dispersion = dispersion_t / |eps_consensus_t| (NaN when eps_consensus_t == 0)
     - eps_surprise = (eps_actual - eps_consensus_t) / |eps_consensus_t|
+    - eps_expected_growth = (eps_consensus_t - prior_quarter_actual) / |prior_quarter_actual|
+      (how much analysts expect EPS to jump vs last reported quarter)
+    - eps_yoy_growth = (eps_consensus_t - same_quarter_last_year_actual) / |same_quarter_last_year_actual|
+      (year-over-year expected growth, removes seasonality)
     """
     df = ibes.copy()
 
@@ -146,5 +152,22 @@ def build_features(ibes: pd.DataFrame) -> pd.DataFrame:
     # EPS surprise
     denom_surp = df["eps_consensus_t"].abs().replace(0, np.nan)
     df["eps_surprise"] = (df["eps_actual"] - df["eps_consensus_t"]) / denom_surp
+
+    # ── Expected growth: consensus vs prior reported actuals ───────────────────
+    # Sequential: consensus_t vs actual reported one quarter ago
+    df["prior_actual"] = df.groupby("ibes_ticker")["eps_actual"].shift(1)
+    denom_prior = df["prior_actual"].abs().replace(0, np.nan)
+    raw_growth = (df["eps_consensus_t"] - df["prior_actual"]) / denom_prior
+    lo_g, hi_g = raw_growth.quantile(0.01), raw_growth.quantile(0.99)
+    df["eps_expected_growth"] = raw_growth.clip(lo_g, hi_g)
+
+    # Year-over-year: consensus_t vs actual from 4 quarters ago (same fiscal season)
+    df["prior_yoy_actual"] = df.groupby("ibes_ticker")["eps_actual"].shift(4)
+    denom_yoy = df["prior_yoy_actual"].abs().replace(0, np.nan)
+    raw_yoy = (df["eps_consensus_t"] - df["prior_yoy_actual"]) / denom_yoy
+    lo_y, hi_y = raw_yoy.quantile(0.01), raw_yoy.quantile(0.99)
+    df["eps_yoy_growth"] = raw_yoy.clip(lo_y, hi_y)
+
+    df = df.drop(columns=["prior_actual", "prior_yoy_actual"])
 
     return df

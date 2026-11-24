@@ -33,7 +33,7 @@ def test_two_by_two_table_exists():
 
 def test_two_by_two_table_schema():
     df = pd.read_csv(OUTPUTS / "two_by_two.csv")
-    required = {"crowding_hi", "revision_hi", "mean_car_event", "n_obs"}
+    required = {"crowding_hi", "mean_car_event", "n_obs"}
     missing = required - set(df.columns)
     assert not missing, f"Missing columns: {missing}"
 

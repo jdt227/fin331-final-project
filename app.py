@@ -28,23 +28,27 @@ st.set_page_config(
 
 @st.cache_data
 def load_data():
-    ds_path   = INPUTS / "final_dataset.parquet"
-    qret_path = OUTPUTS / "quintile_returns.csv"
-    tt_path   = OUTPUTS / "two_by_two.csv"
-    reg_path  = OUTPUTS / "regression_results.csv"
-    fi_path   = OUTPUTS / "feature_importance.csv"
-    ml_path   = OUTPUTS / "ml_summary.csv"
+    ds_path    = INPUTS / "final_dataset.parquet"
+    qret_path  = OUTPUTS / "quintile_returns.csv"
+    gret_path  = OUTPUTS / "growth_quintile_returns.csv"
+    tt_path    = OUTPUTS / "two_by_two.csv"
+    reg_path   = OUTPUTS / "regression_results.csv"
+    chan_path   = OUTPUTS / "channel_test.csv"
+    fi_path    = OUTPUTS / "feature_importance.csv"
+    ml_path    = OUTPUTS / "ml_summary.csv"
 
     df    = pd.read_parquet(ds_path)       if ds_path.exists()   else None
     qret  = pd.read_csv(qret_path)         if qret_path.exists() else None
+    gret  = pd.read_csv(gret_path)         if gret_path.exists() else None
     tt    = pd.read_csv(tt_path)           if tt_path.exists()   else None
     reg   = pd.read_csv(reg_path)          if reg_path.exists()  else None
+    chan  = pd.read_csv(chan_path)          if chan_path.exists()  else None
     fi    = pd.read_csv(fi_path)           if fi_path.exists()   else None
     ml    = pd.read_csv(ml_path)           if ml_path.exists()   else None
-    return df, qret, tt, reg, fi, ml
+    return df, qret, gret, tt, reg, chan, fi, ml
 
 
-df, qret, tt, reg, fi, ml_summary = load_data()
+df, qret, gret, tt, reg, chan, fi, ml_summary = load_data()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 
@@ -189,16 +193,49 @@ Low crowding + High revision = best outcome (genuine underappreciated upgrade).
 
         st.divider()
 
-        # Finding 3 — Channel scatter
-        st.subheader("Finding 3: Do Revisions Predict Crowding?")
+        # Finding 3 — Expected growth → crowding channel
+        st.subheader("Finding 3: Does Expected EPS Jump Predict Crowding?")
+        col_g1, col_g2 = st.columns(2)
+        eg_fig = FIGURES / "expected_growth_vs_crowding.png"
+        if eg_fig.exists():
+            col_g1.image(str(eg_fig), caption="Expected EPS growth vs crowding rank")
         scat_fig = FIGURES / "revision_vs_crowding.png"
         if scat_fig.exists():
-            st.image(str(scat_fig), caption="EPS revision vs crowding rank")
+            col_g2.image(str(scat_fig), caption="EPS revision vs crowding rank")
+
+        if chan is not None:
+            st.caption(
+                "Channel test (OLS): does expected growth predict institutional crowding? "
+                "p-values shown below."
+            )
+            st.dataframe(chan.style.format({"coef": "{:.4f}", "se": "{:.4f}", "pval": "{:.3f}"}),
+                         use_container_width=True)
 
         st.divider()
 
-        # Finding 4 — Drift chart
-        st.subheader("Finding 4: Post-Earnings Drift")
+        # Finding 4a — Growth quintile sort (new)
+        st.subheader("Finding 4: CAR by Expected EPS Growth Quintile")
+        col_ga, col_gb = st.columns(2)
+        gq_fig = FIGURES / "growth_quintile_car.png"
+        if gq_fig.exists():
+            col_ga.image(str(gq_fig))
+        if gret is not None:
+            with col_gb:
+                display_g = gret.copy()
+                display_g["mean_car_event"] = display_g["mean_car_event"].map("{:.3%}".format)
+                display_g["mean_car_drift"] = display_g["mean_car_drift"].map("{:.3%}".format) \
+                    if "mean_car_drift" in display_g.columns else "—"
+                st.dataframe(display_g, use_container_width=True)
+                st.caption(
+                    "Q1 = stocks where analysts expect the smallest EPS jump vs last quarter. "
+                    "Q5 = largest expected jump. No clear penalty for high expectations alone — "
+                    "crowding is the driver."
+                )
+
+        st.divider()
+
+        # Finding 5 — Drift chart
+        st.subheader("Finding 5: Post-Earnings Drift")
         col_e, col_f = st.columns(2)
         drift_fig = FIGURES / "drift_by_quintile.png"
         if drift_fig.exists():
